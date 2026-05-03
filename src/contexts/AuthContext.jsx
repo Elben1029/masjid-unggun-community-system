@@ -31,11 +31,23 @@ export function AuthProvider({ children }) {
   }
 
   function login(email, password) {
-    return supabase.auth.signInWithPassword({ email, password });
+    return supabase.auth.signInWithPassword({ 
+      email, 
+      password,
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
   }
 
   function register(email, password) {
-    return supabase.auth.signUp({ email, password });
+    return supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
   }
 
   function loginWithGoogle() {
