@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
 
   async function fetchUserRole(userId) {
     try {
-      console.log("🔍 Fetching role for user:", userId);
+      console.log("🔍 Fetching profile for user UID:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
       
       if (error) {
         if (error.code === 'PGRST116') {
-          console.log("ℹ️ No profile found, defaulting to 'public'");
+          console.log("ℹ️ No profile found in 'profiles' table, defaulting to 'public'");
           setUserRole('public');
           return 'public';
         }
@@ -31,12 +31,17 @@ export function AuthProvider({ children }) {
         throw error;
       }
       
-      console.log("✅ Profile data fetched:", data);
-      const role = data?.role || 'public';
-      setUserRole(role);
-      return role;
+      // Normalize role: trim and lowercase to avoid comparison issues
+      const rawRole = data?.role || 'public';
+      const normalizedRole = String(rawRole).trim().toLowerCase();
+      
+      console.log("✅ Profile data:", data);
+      console.log("🏷️ Normalized Role:", normalizedRole);
+      
+      setUserRole(normalizedRole);
+      return normalizedRole;
     } catch (error) {
-      console.error("⚠️ Error fetching user role, fallback to public:", error);
+      console.error("⚠️ Fallback to 'public' role:", error);
       setUserRole('public');
       return 'public';
     }
@@ -101,7 +106,8 @@ export function AuthProvider({ children }) {
         if (mounted) setCurrentUser(user);
 
         if (user) {
-          console.log("👤 User authenticated:", user.email);
+          console.log("👤 Auth User Object:", user);
+          console.log("📧 User Email:", user.email);
           await fetchUserRole(user.id);
         } else {
           console.log("👻 No active session");
