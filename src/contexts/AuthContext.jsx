@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
 
   async function fetchUserRole(userId) {
     try {
-      console.log("Fetching role for user:", userId);
+      console.log("🔍 Fetching role for user:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
@@ -22,16 +22,21 @@ export function AuthProvider({ children }) {
         .single();
       
       if (error) {
-        console.error("Profile fetch error:", error);
+        if (error.code === 'PGRST116') {
+          console.log("ℹ️ No profile found, defaulting to 'public'");
+          setUserRole('public');
+          return 'public';
+        }
+        console.error("❌ Profile fetch error:", error);
         throw error;
       }
       
-      console.log("Profile data fetched:", data);
+      console.log("✅ Profile data fetched:", data);
       const role = data?.role || 'public';
       setUserRole(role);
       return role;
     } catch (error) {
-      console.error("Error fetching user role:", error);
+      console.error("⚠️ Error fetching user role, fallback to public:", error);
       setUserRole('public');
       return 'public';
     }
@@ -86,45 +91,48 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    async function initializeAuth() {
+    let mounted = true;
+
+    async function handleAuthStateChange(event, session) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log("🔄 Auth Event:", event);
         const user = session?.user ?? null;
-        setCurrentUser(user);
         
+        if (mounted) setCurrentUser(user);
+
         if (user) {
-          console.log("Session found:", user.email);
+          console.log("👤 User authenticated:", user.email);
           await fetchUserRole(user.id);
         } else {
-          console.log("No active session found");
+          console.log("👻 No active session");
+          if (mounted) setUserRole(null);
         }
-      } catch (error) {
-        console.error("Initialization error:", error);
+      } catch (err) {
+        console.error("💥 Auth initialization error:", err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          console.log("🏁 Auth loading finished");
+          setLoading(false);
+        }
       }
     }
 
-    initializeAuth();
-
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log("Auth state change event:", _event);
-      const user = session?.user ?? null;
-      setCurrentUser(user);
-      
-      if (user) {
-        console.log("User logged in:", user.email);
-        await fetchUserRole(user.id);
-      } else {
-        console.log("User logged out");
-        setUserRole(null);
-      }
-      setLoading(false);
+    // Initialize with getSession then set up listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) handleAuthStateChange("INITIAL", session);
     });
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Avoid double processing on initial session if event is INITIAL_SESSION
+      if (event !== "INITIAL_SESSION") {
+        handleAuthStateChange(event, session);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = {
