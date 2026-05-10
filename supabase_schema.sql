@@ -107,6 +107,9 @@ CREATE TABLE IF NOT EXISTS public.settings (
     account_number TEXT,
     account_name TEXT,
     org_chart_url TEXT,
+    mosque_logo_url TEXT,
+    mosque_banner_url TEXT,
+    qr_image_url TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -216,7 +219,8 @@ VALUES
   ('events', 'events', true),
   ('inventory', 'inventory', true),
   ('receipts', 'receipts', true),
-  ('qr', 'qr', true)
+  ('qr', 'qr', true),
+  ('settings', 'settings', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage Policies for 'events'
@@ -241,3 +245,8 @@ CREATE POLICY "Admin Upload for qr" ON storage.objects FOR INSERT WITH CHECK (bu
 CREATE POLICY "Admin Update for qr" ON storage.objects FOR UPDATE USING (bucket_id = 'qr' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
 CREATE POLICY "Admin Delete for qr" ON storage.objects FOR DELETE USING (bucket_id = 'qr' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
 
+-- Storage Policies for 'settings'
+CREATE POLICY "Public Access for settings" ON storage.objects FOR SELECT USING (bucket_id = 'settings');
+CREATE POLICY "Admin Upload for settings" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Update for settings" ON storage.objects FOR UPDATE USING (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Delete for settings" ON storage.objects FOR DELETE USING (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');

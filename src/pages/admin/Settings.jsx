@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Info } from 'lucide-react';
+import { Save, Info, UploadCloud, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function Settings() {
@@ -16,8 +16,11 @@ export default function Settings() {
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
 
-  // Org Chart Link
+  // Images
   const [orgChartUrl, setOrgChartUrl] = useState('');
+  const [mosqueLogoUrl, setMosqueLogoUrl] = useState('');
+  const [mosqueBannerUrl, setMosqueBannerUrl] = useState('');
+  const [qrImageUrl, setQrImageUrl] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -28,7 +31,7 @@ export default function Settings() {
           .eq('id', 'global')
           .single();
         
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 is code for no rows found
+        if (error && error.code !== 'PGRST116') throw error;
 
         if (data) {
           if (data.mosque_name) setMosqueName(data.mosque_name);
@@ -38,6 +41,9 @@ export default function Settings() {
           if (data.account_number) setAccountNumber(data.account_number);
           if (data.account_name) setAccountName(data.account_name);
           if (data.org_chart_url) setOrgChartUrl(data.org_chart_url);
+          if (data.mosque_logo_url) setMosqueLogoUrl(data.mosque_logo_url);
+          if (data.mosque_banner_url) setMosqueBannerUrl(data.mosque_banner_url);
+          if (data.qr_image_url) setQrImageUrl(data.qr_image_url);
         }
       } catch (err) {
         console.error("Error fetching settings:", err);
@@ -47,6 +53,38 @@ export default function Settings() {
     };
     fetchSettings();
   }, []);
+
+  const handleImageUpload = async (event, fieldName) => {
+    try {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setLoading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${fieldName}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('settings')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('settings')
+        .getPublicUrl(filePath);
+
+      if (fieldName === 'org_chart') setOrgChartUrl(data.publicUrl);
+      if (fieldName === 'mosque_logo') setMosqueLogoUrl(data.publicUrl);
+      if (fieldName === 'mosque_banner') setMosqueBannerUrl(data.publicUrl);
+      if (fieldName === 'qr_image') setQrImageUrl(data.publicUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Gagal memuat naik imej.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -63,6 +101,9 @@ export default function Settings() {
           account_number: accountNumber,
           account_name: accountName,
           org_chart_url: orgChartUrl,
+          mosque_logo_url: mosqueLogoUrl,
+          mosque_banner_url: mosqueBannerUrl,
+          qr_image_url: qrImageUrl,
           updated_at: new Date().toISOString()
         });
       
@@ -76,13 +117,43 @@ export default function Settings() {
     }
   };
 
-  if (fetching) return <div className="text-center py-10">Memuatkan tetapan...</div>;
+  const renderImageUpload = (label, url, fieldName, description) => (
+    <div className="mt-4">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{label}</label>
+      {description && <p className="text-xs text-slate-500 mb-3">{description}</p>}
+      
+      {url && (
+        <div className="mb-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-2 relative group max-w-sm">
+          <img src={url} alt={label} className="max-h-48 object-contain rounded-lg" />
+        </div>
+      )}
+      
+      <div className="relative">
+        <input 
+          type="file" 
+          accept="image/*"
+          onChange={(e) => handleImageUpload(e, fieldName)}
+          disabled={loading}
+          className="block w-full text-sm text-slate-500
+            file:mr-4 file:py-2.5 file:px-4
+            file:rounded-xl file:border-0
+            file:text-sm file:font-semibold
+            file:bg-emerald-50 file:text-emerald-700
+            hover:file:bg-emerald-100
+            dark:file:bg-emerald-900/30 dark:file:text-emerald-400
+            disabled:opacity-50 cursor-pointer"
+        />
+      </div>
+    </div>
+  );
+
+  if (fetching) return <div className="text-center py-10 flex flex-col items-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>Memuatkan tetapan...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Tetapan Sistem</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-2">Urus maklumat rasmi masjid yang akan dipaparkan kepada umum.</p>
+        <p className="text-slate-600 dark:text-slate-400 mt-2">Urus maklumat rasmi dan media masjid yang akan dipaparkan kepada umum.</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -123,13 +194,27 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Imej & Media */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <ImageIcon className="text-emerald-500" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Imej & Media</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {renderImageUpload("Logo Masjid", mosqueLogoUrl, "mosque_logo", "Logo rasmi masjid untuk dipaparkan di navbar.")}
+            {renderImageUpload("Banner Utama", mosqueBannerUrl, "mosque_banner", "Imej latar belakang utama (Hero banner).")}
+            {renderImageUpload("Carta Organisasi", orgChartUrl, "org_chart", "Imej struktur carta organisasi masjid.")}
+          </div>
+        </div>
+
         {/* Maklumat Bank */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-800 dark:text-white">Akaun Bank Rasmi (Sumbangan)</h2>
             <Info size={20} className="text-emerald-500" title="Maklumat ini akan dipaparkan di halaman Derma" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Bank</label>
               <input 
@@ -160,33 +245,21 @@ export default function Settings() {
                 placeholder="Cth: MAJLIS AGAMA ISLAM (MASJID UNGGUN)"
               />
             </div>
+            
+            <div className="md:col-span-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {renderImageUpload("QR DuitNow / Kod QR Bank", qrImageUrl, "qr_image", "Muat naik imej kod QR rasmi bank untuk memudahkan pemindahan wang.")}
+            </div>
           </div>
         </div>
 
-        {/* Carta Organisasi */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Carta Organisasi</h2>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pautan Imej Carta Organisasi (URL)</label>
-            <input 
-              type="url" 
-              value={orgChartUrl}
-              onChange={(e) => setOrgChartUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
-              placeholder="https://contoh.com/imej-carta.jpg"
-            />
-            <p className="mt-2 text-xs text-slate-500">Boleh menggunakan pautan Google Drive atau Firebase Storage untuk memaparkan AJK Masjid.</p>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-4 sticky bottom-6 z-10">
           <button 
             type="submit" 
             disabled={loading}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={20} />
-            {loading ? 'Menyimpan...' : 'Simpan Tetapan'}
+            {loading ? 'Menyimpan...' : 'Simpan Semua Tetapan'}
           </button>
         </div>
       </form>
