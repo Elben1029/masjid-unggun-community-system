@@ -19,8 +19,23 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, loginWithGoogle, loginWithPhone, verifyPhoneOtp } = useAuth();
+  const { login, loginWithGoogle, loginAsGuest, loginWithPhone, verifyPhoneOtp } = useAuth();
   const navigate = useNavigate();
+
+  async function handleGuestLogin() {
+    try {
+      setError('');
+      setLoading(true);
+      const { error } = await loginAsGuest();
+      if (error) throw error;
+      navigate('/');
+    } catch (err) {
+      setError('Gagal log masuk sebagai tetamu.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleEmailSubmit(e) {
     e.preventDefault();
@@ -93,7 +108,7 @@ export default function Login() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
             <span className="text-white font-bold text-3xl">M</span>
           </div>
         </div>
@@ -102,7 +117,7 @@ export default function Login() {
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Atau{' '}
-          <Link to="/register" className="font-medium text-teal-600 hover:text-teal-500 dark:text-teal-400">
+          <Link to="/register" className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
             daftar akaun baharu
           </Link>
         </p>
@@ -131,7 +146,7 @@ export default function Login() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     placeholder="anda@contoh.com"
                   />
                 </div>
@@ -148,7 +163,7 @@ export default function Login() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     placeholder="••••••••"
                   />
                 </div>
@@ -158,7 +173,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-all"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
                 >
                   {loading ? 'Log Masuk...' : 'Log Masuk Emel'}
                 </button>
@@ -180,7 +195,7 @@ export default function Login() {
                     required
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     placeholder="+60123456789"
                   />
                 </div>
@@ -190,7 +205,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-all"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
                 >
                   {loading ? 'Menghantar...' : 'Hantar Kod SMS'}
                 </button>
@@ -213,7 +228,7 @@ export default function Login() {
                     maxLength="6"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
-                    className="appearance-none block w-full pl-10 px-3 py-3 text-center tracking-widest text-lg border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="appearance-none block w-full pl-10 px-3 py-3 text-center tracking-widest text-lg border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     placeholder="123456"
                   />
                 </div>
@@ -222,7 +237,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-all"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
                 >
                   {loading ? 'Mengesahkan...' : 'Sahkan & Log Masuk'}
                 </button>
@@ -258,6 +273,18 @@ export default function Login() {
                   Google
                 </button>
                 
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                >
+                  <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  Teruskan sebagai Tetamu
+                </button>
+
                 {authMode === 'email' ? (
                   <button
                     type="button"

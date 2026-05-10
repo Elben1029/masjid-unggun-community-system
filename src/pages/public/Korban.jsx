@@ -46,7 +46,7 @@ export default function Korban() {
         {/* Package Selection */}
         <div className="mb-10">
           <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">1</span>
+            <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">1</span>
             Pilih Pakej
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -70,7 +70,7 @@ export default function Korban() {
                 <h3 className="font-bold text-slate-800 dark:text-white pr-6">{pkg.name}</h3>
                 <p className="text-2xl font-black text-orange-600 dark:text-orange-400 my-2">RM {pkg.price}</p>
                 <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 w-fit px-2 py-1 rounded-md">
-                  <span className={pkg.available < 5 ? 'text-red-500' : 'text-teal-500'}>
+                  <span className={pkg.available < 5 ? 'text-red-500' : 'text-emerald-500'}>
                     {pkg.available} baki
                   </span>
                   <span>/ {pkg.total}</span>
@@ -88,7 +88,7 @@ export default function Korban() {
         {/* Participant Details */}
         <div className="mb-10">
           <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">2</span>
+            <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">2</span>
             Maklumat Peserta
           </h2>
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex gap-3 mb-6">
@@ -105,7 +105,7 @@ export default function Korban() {
               </label>
               <input
                 type="text"
-                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
                 placeholder="cth: Muhammad Ali bin Abu Bakar"
               />
             </div>
@@ -116,7 +116,7 @@ export default function Korban() {
                 </label>
                 <input
                   type="tel"
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
                   placeholder="012-3456789"
                 />
               </div>
@@ -126,7 +126,7 @@ export default function Korban() {
                 </label>
                 <input
                   type="email"
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
                   placeholder="anda@contoh.com"
                 />
               </div>
@@ -144,7 +144,7 @@ export default function Korban() {
           </div>
           <button 
             disabled={!selectedPkg}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-500/20"
+            className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
           >
             Teruskan Pembayaran
           </button>

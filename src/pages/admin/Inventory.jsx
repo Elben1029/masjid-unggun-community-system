@@ -148,7 +148,7 @@ export default function Inventory() {
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Pengurusan Inventori</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
           Tambah Item Baru
@@ -164,7 +164,7 @@ export default function Inventory() {
             <input
               type="text"
               placeholder="Cari item..."
-              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -250,7 +250,7 @@ export default function Inventory() {
                   required
                   value={item}
                   onChange={(e) => setItem(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                   placeholder="Cth: Sajadah Karpet Panjang" 
                 />
               </div>
@@ -261,7 +261,7 @@ export default function Inventory() {
                   <select 
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="Kelengkapan Solat">Kelengkapan Solat</option>
                     <option value="Elektronik">Elektronik</option>
@@ -279,7 +279,7 @@ export default function Inventory() {
                     required
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                   />
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function Inventory() {
                 <select 
                   value={condition}
                   onChange={(e) => setCondition(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                 >
                   <option value="Baik">Baik</option>
                   <option value="Sederhana">Sederhana</option>
@@ -304,7 +304,7 @@ export default function Inventory() {
                   <div className="space-y-1 text-center">
                     <Upload className="mx-auto h-12 w-12 text-slate-400" />
                     <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                      <label className="relative cursor-pointer rounded-md bg-transparent font-medium text-teal-600 hover:text-teal-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-2">
+                      <label className="relative cursor-pointer rounded-md bg-transparent font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
                         <span>Pilih gambar</span>
                         <input type="file" className="sr-only" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
                       </label>
@@ -328,7 +328,7 @@ export default function Inventory() {
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-xl font-medium transition-colors disabled:opacity-50"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Menyimpan...' : 'Simpan Item'}
                 </button>

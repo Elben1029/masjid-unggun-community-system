@@ -12,20 +12,18 @@ import Korban from './pages/public/Korban';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// Admin Pages
 import Dashboard from './pages/admin/Dashboard';
 import EventsManager from './pages/admin/EventsManager';
 import DonationsManager from './pages/admin/DonationsManager';
+import KorbanManager from './pages/admin/KorbanManager';
 import Inventory from './pages/admin/Inventory';
 import UsersManager from './pages/admin/UsersManager';
 import Settings from './pages/admin/Settings';
 
-// Placeholder components for other routes
-const Placeholder = ({ title }) => (
-  <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-    <h1 className="text-4xl font-bold text-slate-800 dark:text-white">{title}</h1>
-  </div>
-);
+// Public Pages Additional
+import PublicInventory from './pages/public/Inventory';
+import About from './pages/public/About';
+import Profile from './pages/auth/Profile';
 
 export default function App() {
   return (
@@ -43,6 +41,13 @@ export default function App() {
             <Route path="/events" element={<Events />} />
             <Route path="/donations" element={<Donations />} />
             <Route path="/korban" element={<Korban />} />
+            <Route path="/inventory" element={<PublicInventory />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
           </Route>
 
           {/* Admin Routes */}
@@ -54,7 +59,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="events" element={<EventsManager />} />
             <Route path="donations" element={<DonationsManager />} />
-            <Route path="korban" element={<Placeholder title="Pengurusan Korban" />} />
+            <Route path="korban" element={<KorbanManager />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="users" element={<UsersManager />} />
             <Route path="settings" element={<Settings />} />

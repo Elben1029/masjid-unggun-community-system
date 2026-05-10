@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
-import { Users, DollarSign, Calendar as CalendarIcon, Package } from 'lucide-react';
+import { Users, DollarSign, Calendar as CalendarIcon, Package, ClipboardList, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const donationData = [
@@ -24,33 +24,46 @@ const eventData = [
 
 export default function Dashboard() {
   const [stats, setStats] = useState([
-    { label: 'Jumlah Ahli', value: '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30' },
     { label: 'Sumbangan (Disahkan)', value: 'RM 0', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-    { label: 'Acara Aktif', value: '0', icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+    { label: 'Acara (Bulan Ini)', value: '0', icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+    { label: 'Pendaftaran Korban', value: '0', icon: ClipboardList, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' },
     { label: 'Aset & Inventori', value: '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+    { label: 'Kelulusan Tertunda', value: '0', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
   ]);
 
   useEffect(() => {
     async function fetchStats() {
-      // 1. Fetch Users count
-      const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-      
-      // 2. Fetch Donations sum
-      const { data: donations } = await supabase.from('donations').select('amount').eq('status', 'Disahkan');
-      const totalDonations = donations?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+      try {
+        // Sumbangan (Cash Donations)
+        const { data: donations } = await supabase.from('cash_donations').select('amount').eq('status', 'approved');
+        const totalDonations = donations?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
-      // 3. Fetch Events count
-      const { count: eventsCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
+        // Total Events
+        const { count: eventsCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
 
-      // 4. Fetch Inventory count
-      const { count: inventoryCount } = await supabase.from('inventory').select('*', { count: 'exact', head: true });
+        // Korban Registrations
+        const { count: korbanCount } = await supabase.from('korban_registrations').select('*', { count: 'exact', head: true });
 
-      setStats([
-        { label: 'Jumlah Ahli', value: usersCount?.toLocaleString() || '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-        { label: 'Sumbangan (Disahkan)', value: `RM ${totalDonations.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-        { label: 'Acara Aktif', value: eventsCount?.toLocaleString() || '0', icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-        { label: 'Aset & Inventori', value: inventoryCount?.toLocaleString() || '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-      ]);
+        // Inventory
+        const { count: inventoryCount } = await supabase.from('inventory').select('*', { count: 'exact', head: true });
+
+        // Pending Approvals (Sum of pending from various tables)
+        const { count: pendingDonations } = await supabase.from('cash_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const { count: pendingKorban } = await supabase.from('korban_registrations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const { count: pendingFood } = await supabase.from('food_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        
+        const totalPending = (pendingDonations || 0) + (pendingKorban || 0) + (pendingFood || 0);
+
+        setStats([
+          { label: 'Sumbangan (Disahkan)', value: `RM ${totalDonations.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+          { label: 'Acara Keseluruhan', value: eventsCount?.toLocaleString() || '0', icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+          { label: 'Pendaftaran Korban', value: korbanCount?.toLocaleString() || '0', icon: ClipboardList, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' },
+          { label: 'Aset & Inventori', value: inventoryCount?.toLocaleString() || '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+          { label: 'Kelulusan Tertunda', value: totalPending.toLocaleString(), icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+        ]);
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      }
     }
 
     fetchStats();

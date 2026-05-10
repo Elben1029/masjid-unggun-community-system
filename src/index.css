@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-masjid-green: #0d9488;
-  --color-masjid-green-light: #14b8a6;
-  --color-masjid-green-dark: #0f766e;
-  --color-masjid-accent: #f59e0b;
+  --color-masjid-green: #059669; /* emerald-600 */
+  --color-masjid-green-light: #10b981; /* emerald-500 */
+  --color-masjid-green-dark: #047857; /* emerald-700 */
+  --color-masjid-accent: #fbbf24; /* amber-400 / gold */
 }
 
 @layer base {
   :root {
-    --background: #f8fafc; /* light gray/blue background */
+    --background: #fdfbf7; /* Off-white */
     --foreground: #0f172a;
   }
   .dark {
@@ -26,19 +26,19 @@
     @apply bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl dark:bg-slate-900/60 dark:border-slate-700/50;
   }
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500 dark:from-teal-400 dark:to-emerald-300;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300;
   }
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image: radial-gradient(circle at 50% -20%, rgba(20, 184, 166, 0.1), transparent 50%),
-                    radial-gradient(circle at -20% 50%, rgba(13, 148, 136, 0.05), transparent 50%);
+  background-image: radial-gradient(circle at 50% -20%, rgba(16, 185, 129, 0.08), transparent 50%),
+                    radial-gradient(circle at -20% 50%, rgba(5, 150, 105, 0.04), transparent 50%);
   background-attachment: fixed;
 }
 
@@ -50,8 +50,8 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full dark:bg-slate-700;
+  @apply bg-emerald-300/50 rounded-full dark:bg-slate-700;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400 dark:bg-slate-600;
+  @apply bg-emerald-400/80 dark:bg-slate-600;
 }

@@ -20,10 +20,12 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Events', path: '/events' },
-    { name: 'Donations', path: '/donations' },
+    { name: 'Utama', path: '/' },
+    { name: 'Program', path: '/events' },
+    { name: 'Sumbangan', path: '/donations' },
     { name: 'Korban', path: '/korban' },
+    { name: 'Inventori', path: '/inventory' },
+    { name: 'Tentang Kami', path: '/about' },
   ];
 
   async function handleLogout() {
@@ -41,11 +43,11 @@ export default function Navbar() {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-teal-500/30 transition-all duration-300">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-emerald-500/30 transition-all duration-300">
               <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">
-              Masjid <span className="text-teal-600 dark:text-teal-400">Unggun</span>
+              Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span>
             </span>
           </Link>
 
@@ -55,8 +57,8 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 to={link.path}
-                className={`text-sm font-medium transition-colors hover:text-teal-600 dark:hover:text-teal-400 ${
-                  location.pathname === link.path ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-300'
+                className={`text-sm font-medium transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
+                  location.pathname === link.path ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'
                 }`}
               >
                 {link.name}
@@ -75,10 +77,16 @@ export default function Navbar() {
               )}
               
               {currentUser ? (
-                <button onClick={handleLogout} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-                  <LogOut size={16} />
-                  <span>Log Keluar</span>
-                </button>
+                <>
+                  <Link to="/profile" className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-medium">
+                    <User size={16} />
+                    <span>Profil</span>
+                  </Link>
+                  <button onClick={handleLogout} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <LogOut size={16} />
+                    <span>Log Keluar</span>
+                  </button>
+                </>
               ) : (
                 <Link to="/login" className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full text-sm font-medium hover:scale-105 transition-transform duration-200 shadow-md">
                   <User size={16} />
@@ -104,7 +112,7 @@ export default function Navbar() {
             <Link
               key={link.name}
               to={link.path}
-              className="block px-3 py-2 rounded-lg text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-600 dark:hover:text-teal-400"
+              className="block px-3 py-2 rounded-lg text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400"
               onClick={() => setIsOpen(false)}
             >
               {link.name}
@@ -124,20 +132,29 @@ export default function Navbar() {
           )}
 
           {currentUser ? (
-            <button
-              onClick={() => {
-                handleLogout();
-                setIsOpen(false);
-              }}
-              className="mt-2 w-full text-center bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-4 py-3 rounded-lg text-base font-medium"
-            >
-              Log Keluar
-            </button>
+            <>
+              <Link
+                to="/profile"
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-lg text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Profil
+              </Link>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsOpen(false);
+                }}
+                className="mt-2 w-full text-center bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-4 py-3 rounded-lg text-base font-medium"
+              >
+                Log Keluar
+              </button>
+            </>
           ) : (
             <Link
               to="/login"
               onClick={() => setIsOpen(false)}
-              className="mt-2 w-full text-center bg-teal-600 text-white px-4 py-3 rounded-lg text-base font-medium"
+              className="mt-2 w-full text-center bg-emerald-600 text-white px-4 py-3 rounded-lg text-base font-medium"
             >
               Log Masuk / Daftar
             </Link>

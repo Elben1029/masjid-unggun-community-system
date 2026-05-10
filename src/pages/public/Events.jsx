@@ -46,7 +46,7 @@ export default function Events() {
             onClick={() => setFilter(type)}
             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
               filter === type
-                ? 'bg-teal-600 text-white shadow-md'
+                ? 'bg-emerald-600 text-white shadow-md'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -67,7 +67,7 @@ export default function Events() {
               {event.image_url ? (
                 <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-teal-500 to-emerald-600 text-white">
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">
                   <ImageIcon size={48} className="opacity-50" />
                 </div>
               )}
@@ -81,7 +81,7 @@ export default function Events() {
               
               <div className="space-y-4 mb-8 flex-1">
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm">
-                  <Calendar className="text-teal-600 dark:text-teal-400 shrink-0" size={18} />
+                  <Calendar className="text-emerald-600 dark:text-emerald-400 shrink-0" size={18} />
                   <span>
                     {event.date ? new Date(event.date).toLocaleDateString('ms-MY', { 
                       weekday: 'long', 
@@ -99,7 +99,7 @@ export default function Events() {
                   </p>
                 )}
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm">
-                  <Users className="text-teal-600 dark:text-teal-400 shrink-0" size={18} />
+                  <Users className="text-emerald-600 dark:text-emerald-400 shrink-0" size={18} />
                   <span>{event.registered || 0} Terdaftar</span>
                 </div>
               </div>

@@ -6,7 +6,8 @@ import {
   Box, 
   Users, 
   Settings,
-  LogOut
+  LogOut,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -26,18 +27,19 @@ export default function Sidebar() {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-    { icon: Calendar, label: 'Events', path: '/admin/events' },
-    { icon: Heart, label: 'Donations', path: '/admin/donations' },
-    { icon: Box, label: 'Inventory', path: '/admin/inventory' },
-    { icon: Users, label: 'Users', path: '/admin/users' },
-    { icon: Settings, label: 'Settings', path: '/admin/settings' },
+    { icon: Calendar, label: 'Program', path: '/admin/events' },
+    { icon: Heart, label: 'Sumbangan', path: '/admin/donations' },
+    { icon: ClipboardList, label: 'Korban', path: '/admin/korban' },
+    { icon: Box, label: 'Inventori', path: '/admin/inventory' },
+    { icon: Users, label: 'Pengguna', path: '/admin/users' },
+    { icon: Settings, label: 'Tetapan', path: '/admin/settings' },
   ];
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-screen sticky top-0 flex flex-col hidden md:flex">
       <div className="h-20 flex items-center px-6 border-b border-slate-200 dark:border-slate-800">
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
             <span className="text-white font-bold">M</span>
           </div>
           <span className="font-bold text-lg text-slate-800 dark:text-white">Admin Panel</span>
@@ -53,11 +55,11 @@ export default function Sidebar() {
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                 isActive 
-                  ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400' 
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' 
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <item.icon size={20} className={isActive ? 'text-teal-600 dark:text-teal-400' : ''} />
+              <item.icon size={20} className={isActive ? 'text-emerald-600 dark:text-emerald-400' : ''} />
               {item.label}
             </Link>
           );

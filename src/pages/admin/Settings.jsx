@@ -97,7 +97,7 @@ export default function Settings() {
                 type="text" 
                 value={mosqueName}
                 onChange={(e) => setMosqueName(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
               />
             </div>
             <div>
@@ -106,7 +106,7 @@ export default function Settings() {
                 rows="3"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="Cth: Kampung Unggun, Menggatal, Sabah"
               ></textarea>
             </div>
@@ -116,7 +116,7 @@ export default function Settings() {
                 type="text" 
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="Cth: 088-123456"
               />
             </div>
@@ -127,7 +127,7 @@ export default function Settings() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-800 dark:text-white">Akaun Bank Rasmi (Sumbangan)</h2>
-            <Info size={20} className="text-teal-500" title="Maklumat ini akan dipaparkan di halaman Derma" />
+            <Info size={20} className="text-emerald-500" title="Maklumat ini akan dipaparkan di halaman Derma" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -136,7 +136,7 @@ export default function Settings() {
                 type="text" 
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="Cth: Bank Islam"
               />
             </div>
@@ -146,7 +146,7 @@ export default function Settings() {
                 type="text" 
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="100XXXXXXXXXX"
               />
             </div>
@@ -156,7 +156,7 @@ export default function Settings() {
                 type="text" 
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="Cth: MAJLIS AGAMA ISLAM (MASJID UNGGUN)"
               />
             </div>
@@ -172,7 +172,7 @@ export default function Settings() {
               type="url" 
               value={orgChartUrl}
               onChange={(e) => setOrgChartUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
               placeholder="https://contoh.com/imej-carta.jpg"
             />
             <p className="mt-2 text-xs text-slate-500">Boleh menggunakan pautan Google Drive atau Firebase Storage untuk memaparkan AJK Masjid.</p>
@@ -183,7 +183,7 @@ export default function Settings() {
           <button 
             type="submit" 
             disabled={loading}
-            className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={20} />
             {loading ? 'Menyimpan...' : 'Simpan Tetapan'}

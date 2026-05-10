@@ -76,6 +76,10 @@ export function AuthProvider({ children }) {
     });
   }
 
+  function loginAsGuest() {
+    return supabase.auth.signInAnonymously();
+  }
+
   function loginWithPhone(phoneNumber) {
     // Supabase Phone Auth usually sends an OTP
     return supabase.auth.signInWithOtp({
@@ -148,6 +152,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     loginWithGoogle,
+    loginAsGuest,
     loginWithPhone,
     verifyPhoneOtp,
     logout
@@ -158,7 +163,7 @@ export function AuthProvider({ children }) {
       {loading ? (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-slate-600 dark:text-slate-400 font-medium italic">Memulakan sistem...</p>
           </div>
         </div>

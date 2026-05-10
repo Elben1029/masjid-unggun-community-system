@@ -155,7 +155,7 @@ export default function EventsManager() {
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Pengurusan Acara</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
           Cipta Acara Baru
@@ -171,7 +171,7 @@ export default function EventsManager() {
             <input
               type="text"
               placeholder="Cari acara..."
-              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -200,7 +200,7 @@ export default function EventsManager() {
                   <td className="px-6 py-4">{event.date}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      event.status === 'Akan Datang' ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400' :
+                      event.status === 'Akan Datang' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' :
                       event.status === 'Selesai' ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300' :
                       'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
                     }`}>
@@ -244,7 +244,7 @@ export default function EventsManager() {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                   placeholder="Cth: Kuliah Maghrib Perdana" 
                 />
               </div>
@@ -257,7 +257,7 @@ export default function EventsManager() {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500" 
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                   />
                 </div>
                 <div>
@@ -265,7 +265,7 @@ export default function EventsManager() {
                   <select 
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="Akan Datang">Akan Datang</option>
                     <option value="Sedang Berlangsung">Sedang Berlangsung</option>
@@ -281,7 +281,7 @@ export default function EventsManager() {
                   rows="4"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="Maklumat lanjut berkenaan acara..."
                 ></textarea>
               </div>
@@ -292,7 +292,7 @@ export default function EventsManager() {
                   <div className="space-y-1 text-center">
                     <Upload className="mx-auto h-12 w-12 text-slate-400" />
                     <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                      <label className="relative cursor-pointer rounded-md bg-transparent font-medium text-teal-600 hover:text-teal-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-2">
+                      <label className="relative cursor-pointer rounded-md bg-transparent font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
                         <span>Upload a file</span>
                         <input type="file" className="sr-only" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
                       </label>
@@ -316,7 +316,7 @@ export default function EventsManager() {
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-xl font-medium transition-colors disabled:opacity-50"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Menyimpan...' : 'Simpan Acara'}
                 </button>

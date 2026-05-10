@@ -10,21 +10,21 @@ export default function Footer() {
           {/* About */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
                 <span className="text-white font-bold">M</span>
               </div>
               <span className="font-bold text-xl text-white">
-                Masjid <span className="text-teal-400">Unggun</span>
+                Masjid <span className="text-emerald-400">Unggun</span>
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
               Pusat ibadah dan kemasyarakatan yang komprehensif, menguruskan acara, sumbangan, dan kebajikan jemaah.
             </p>
             <div className="flex items-center gap-4 pt-2">
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-teal-600 hover:text-white transition-colors">
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
                 <Globe size={18} />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-teal-600 hover:text-white transition-colors">
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
                 <MessageCircle size={18} />
               </a>
             </div>
@@ -41,7 +41,7 @@ export default function Footer() {
                 { name: 'Daftar Korban', path: '/korban' },
               ].map((link) => (
                 <li key={link.name}>
-                  <Link to={link.path} className="text-sm hover:text-teal-400 transition-colors">
+                  <Link to={link.path} className="text-sm hover:text-emerald-400 transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -54,18 +54,18 @@ export default function Footer() {
             <h3 className="text-white font-semibold text-lg">Hubungi Kami</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <MapPin className="text-teal-500 shrink-0 mt-0.5" size={18} />
+                <MapPin className="text-emerald-500 shrink-0 mt-0.5" size={18} />
                 <span className="text-sm text-slate-400">
                   Masjid Unggun, Jalan Contoh,<br />
                   88000 Kota Kinabalu, Sabah
                 </span>
               </li>
               <li className="flex items-center gap-3">
-                <Phone className="text-teal-500 shrink-0" size={18} />
+                <Phone className="text-emerald-500 shrink-0" size={18} />
                 <span className="text-sm text-slate-400">+60 88-123 4567</span>
               </li>
               <li className="flex items-center gap-3">
-                <Mail className="text-teal-500 shrink-0" size={18} />
+                <Mail className="text-emerald-500 shrink-0" size={18} />
                 <span className="text-sm text-slate-400">admin@masjidunggun.com</span>
               </li>
             </ul>

@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-slate-600 dark:text-slate-400 font-medium">Memuatkan maklumat akaun...</p>
         </div>
       </div>

@@ -78,7 +78,7 @@ export default function UsersManager() {
             <input
               type="text"
               placeholder="Cari emel atau nombor telefon..."
-              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 dark:text-white"
+              className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -104,7 +104,7 @@ export default function UsersManager() {
                 <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                     {user.email || user.phone || 'Tiada Maklumat'}
-                    {user.id === currentUser?.id && <span className="ml-2 text-xs text-teal-600 bg-teal-100 px-2 py-0.5 rounded-full">Anda</span>}
+                    {user.id === currentUser?.id && <span className="ml-2 text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">Anda</span>}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -123,7 +123,7 @@ export default function UsersManager() {
                         className={`p-1.5 rounded-lg flex items-center gap-1.5 ml-auto text-xs font-medium transition-colors ${
                           user.role === 'admin' 
                             ? 'text-orange-600 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' 
-                            : 'text-teal-600 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40'
+                            : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40'
                         }`}
                         title="Tukar Peranan"
                       >
