@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Food Donations (Calendar slots)
 CREATE TABLE IF NOT EXISTS public.food_donations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    date DATE NOT NULL,
+    date DATE NOT NULL UNIQUE,
     donor_name TEXT,
     user_id UUID REFERENCES public.profiles(id),
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'pending', -- pending, reserved, completed, cancelled
     contact_number TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -53,12 +53,43 @@ CREATE TABLE IF NOT EXISTS public.cash_donations (
     user_id UUID REFERENCES public.profiles(id),
     donor_name TEXT,
     amount DECIMAL(10, 2) NOT NULL,
+    payment_method TEXT, -- QR, bank_transfer
     reference_number TEXT,
     receipt_url TEXT,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'pending', -- pending, verified, approved
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Trigger for Asset Waqf
+CREATE OR REPLACE FUNCTION public.update_asset_waqf_amount()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' AND NEW.status = 'approved' THEN
+        UPDATE public.asset_waqf
+        SET current_amount = current_amount + NEW.quantity
+        WHERE id = NEW.waqf_id;
+    ELSIF TG_OP = 'UPDATE' AND NEW.status = 'approved' AND OLD.status != 'approved' THEN
+        UPDATE public.asset_waqf
+        SET current_amount = current_amount + NEW.quantity
+        WHERE id = NEW.waqf_id;
+    ELSIF TG_OP = 'UPDATE' AND OLD.status = 'approved' AND NEW.status != 'approved' THEN
+        UPDATE public.asset_waqf
+        SET current_amount = current_amount - OLD.quantity
+        WHERE id = NEW.waqf_id;
+    ELSIF TG_OP = 'DELETE' AND OLD.status = 'approved' THEN
+        UPDATE public.asset_waqf
+        SET current_amount = current_amount - OLD.quantity
+        WHERE id = OLD.waqf_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_asset_waqf_donation ON public.asset_waqf_donations;
+CREATE TRIGGER on_asset_waqf_donation
+    AFTER INSERT OR UPDATE OR DELETE ON public.asset_waqf_donations
+    FOR EACH ROW EXECUTE FUNCTION public.update_asset_waqf_amount();
 
 -- Korban Registrations
 CREATE TABLE IF NOT EXISTS public.korban_registrations (
@@ -177,8 +208,8 @@ CREATE POLICY "Admins can manage settings" ON public.settings FOR ALL USING (
 
 -- Food Donations Policies
 CREATE POLICY "Anyone can view food donations" ON public.food_donations FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can create food donations" ON public.food_donations FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Users can update own food donations" ON public.food_donations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can create food donations" ON public.food_donations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update own food donations" ON public.food_donations FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
 CREATE POLICY "Admins can manage food donations" ON public.food_donations FOR ALL USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
@@ -191,21 +222,21 @@ CREATE POLICY "Admins can manage asset waqf" ON public.asset_waqf FOR ALL USING 
 
 -- Asset Waqf Donations Policies
 CREATE POLICY "Anyone can view asset waqf donations" ON public.asset_waqf_donations FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can donate to asset waqf" ON public.asset_waqf_donations FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Anyone can donate to asset waqf" ON public.asset_waqf_donations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admins can manage asset waqf donations" ON public.asset_waqf_donations FOR ALL USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
 
 -- Cash Donations Policies
-CREATE POLICY "Authenticated users can view own cash donations" ON public.cash_donations FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Authenticated users can submit cash donations" ON public.cash_donations FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Anyone can view own cash donations" ON public.cash_donations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Anyone can submit cash donations" ON public.cash_donations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admins can manage cash donations" ON public.cash_donations FOR ALL USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
 
 -- Korban Registrations Policies
-CREATE POLICY "Authenticated users can view own korban" ON public.korban_registrations FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Authenticated users can register for korban" ON public.korban_registrations FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Anyone can view own korban" ON public.korban_registrations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Anyone can register for korban" ON public.korban_registrations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admins can manage korban" ON public.korban_registrations FOR ALL USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
