@@ -88,11 +88,9 @@ export default function Settings() {
           account_number: accountNumber,
           account_name: accountName,
           org_chart_url: orgChartUrl,
-          organization_chart_url: orgChartUrl, // Backward compatibility
           mosque_logo_url: mosqueLogoUrl,
           mosque_banner_url: mosqueBannerUrl,
           qr_image_url: qrImageUrl,
-          qr_code_url: qrImageUrl, // Backward compatibility
           updated_at: new Date().toISOString()
         });
       

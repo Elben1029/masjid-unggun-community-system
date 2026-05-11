@@ -29,10 +29,24 @@ export function SettingsProvider({ children }) {
         .eq('id', 'global')
         .single();
       
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code === 'PGRST116') {
+        // Row does not exist, automatically create it
+        const defaultSettings = {
+          id: 'global',
+          mosque_name: 'Masjid Unggun'
+        };
+        const { data: newData, error: insertError } = await supabase
+          .from('settings')
+          .insert([defaultSettings])
+          .select()
+          .single();
+        
+        if (!insertError && newData) {
+          setSettings(newData);
+        }
+      } else if (error) {
         console.error("Error fetching settings:", error);
-      }
-      if (data) {
+      } else if (data) {
         setSettings(data);
       }
     } catch (err) {
