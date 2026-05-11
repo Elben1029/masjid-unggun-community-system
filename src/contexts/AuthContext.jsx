@@ -10,7 +10,35 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [roleVersion, setRoleVersion] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  async function syncRole(session) {
+    if (!session) return;
+    try {
+      console.log("🔄 Syncing role with Edge Function...");
+      const { data, error } = await supabase.functions.invoke('sync-role', {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      
+      if (error) throw error;
+      
+      if (data) {
+        console.log("✅ Sync Role Data:", data);
+        setRoleVersion(prevVersion => {
+          if (prevVersion !== null && prevVersion !== data.role_version) {
+            console.log("🔄 Role version mismatch, refreshing session...");
+            supabase.auth.refreshSession();
+          }
+          return data.role_version;
+        });
+        // Update role in memory
+        setUserRole(data.role);
+      }
+    } catch (err) {
+      console.error("❌ Error syncing role:", err);
+    }
+  }
 
   async function fetchUserRole(userId) {
     try {
@@ -112,7 +140,20 @@ export function AuthProvider({ children }) {
         if (user) {
           console.log("👤 Auth User Object:", user);
           console.log("📧 User Email:", user.email);
+          
+          // STEP 5: Prepare structure for future JWT usage
+          // Check if role exists in app_metadata, but keep profiles.role as source of truth for now.
+          const jwtRole = user.app_metadata?.role;
+          if (jwtRole) {
+            console.log("🔮 Future JWT Role detected:", jwtRole);
+          }
+
           await fetchUserRole(user.id);
+          
+          // Sync role on initial load to reflect changes after refresh automatically
+          if (event === "INITIAL" || event === "INITIAL_SESSION") {
+            await syncRole(session);
+          }
         } else {
           console.log("👻 No active session");
           if (mounted) setUserRole(null);
@@ -136,6 +177,11 @@ export function AuthProvider({ children }) {
       // Avoid double processing on initial session if event is INITIAL_SESSION
       if (event !== "INITIAL_SESSION") {
         handleAuthStateChange(event, session);
+      }
+      
+      // STEP 4: After SIGNED_IN event, call Edge Function
+      if (event === "SIGNED_IN") {
+        syncRole(session);
       }
     });
 
