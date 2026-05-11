@@ -26,6 +26,7 @@ export default function Donations() {
   const [foodForm, setFoodForm] = useState({
     date: '',
     donorName: '',
+    foodType: '',
     contactNumber: '',
     notes: ''
   });
@@ -96,9 +97,9 @@ export default function Donations() {
   const fetchAssets = async () => {
     try {
       const { data, error } = await supabase
-        .from('asset_waqf')
+        .from('inventory')
         .select('*')
-        .eq('status', 'active')
+        .eq('is_needed', true)
         .order('created_at', { ascending: false });
       if (!error && data) {
         setAssets(data);
@@ -162,6 +163,7 @@ export default function Donations() {
       const { error } = await supabase.from('food_donations').insert({
         date: foodForm.date,
         donor_name: foodForm.donorName || 'Hamba Allah',
+        food_type: foodForm.foodType,
         user_id: user?.id || null,
         contact_number: foodForm.contactNumber,
         notes: foodForm.notes,
@@ -171,7 +173,7 @@ export default function Donations() {
       if (error) throw error;
       setFoodSuccess(true);
       fetchFoodDates();
-      setFoodForm({ date: '', donorName: '', contactNumber: '', notes: '' });
+      setFoodForm({ date: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
       setTimeout(() => setFoodSuccess(false), 5000);
     } catch (err) {
       console.error(err);
@@ -188,7 +190,7 @@ export default function Donations() {
     setAssetLoading(true);
     try {
       const { error } = await supabase.from('asset_waqf_donations').insert({
-        waqf_id: selectedAsset.id,
+        inventory_id: selectedAsset.id,
         user_id: user?.id || null,
         donor_name: assetForm.donorName || 'Hamba Allah',
         quantity: parseInt(assetForm.quantity),
@@ -261,7 +263,7 @@ export default function Donations() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === 'asset' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
           >
             <Box size={18} />
-            Wakaf Aset
+            Sumbangan Aset Masjid
           </button>
         </div>
       </div>
@@ -482,6 +484,17 @@ export default function Donations() {
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jenis Makanan (Cth: Nasi Lemak 50 Pax)</label>
+                  <input
+                    type="text"
+                    required
+                    value={foodForm.foodType}
+                    onChange={e => setFoodForm({...foodForm, foodType: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
+                  />
+                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Telefon Untuk Dihubungi</label>
@@ -531,27 +544,34 @@ export default function Donations() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {assets.map(asset => {
-                  const percent = Math.min(100, Math.round((asset.current_amount / asset.target_amount) * 100));
+                  const percent = Math.min(100, Math.round(((asset.received_quantity || 0) / (asset.needed_quantity || 1)) * 100));
                   return (
                     <div 
                       key={asset.id}
                       onClick={() => setSelectedAsset(asset)}
-                      className={`cursor-pointer rounded-2xl border-2 transition-all duration-300 p-5 flex flex-col ${
+                      className={`cursor-pointer rounded-2xl border-2 transition-all duration-300 flex flex-col overflow-hidden ${
                         selectedAsset?.id === asset.id 
                           ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 shadow-md transform -translate-y-1' 
                           : 'border-transparent glass-card hover:border-emerald-200 dark:hover:border-emerald-800'
                       }`}
                     >
-                      <h3 className="font-bold text-slate-800 dark:text-white mb-1 line-clamp-1">{asset.title}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 flex-1">{asset.description}</p>
-                      
-                      <div className="mt-auto">
-                        <div className="flex justify-between text-xs font-bold mb-1">
-                          <span className="text-emerald-600 dark:text-emerald-400">{asset.current_amount} Unit</span>
-                          <span className="text-slate-500">Target: {asset.target_amount}</span>
+                      {asset.image_url && (
+                        <div className="h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                          <img src={asset.image_url} alt={asset.item} className="w-full h-full object-cover" />
                         </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                          <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
+                      )}
+                      <div className="p-5 flex-1 flex flex-col">
+                        <h3 className="font-bold text-slate-800 dark:text-white mb-1 line-clamp-1">{asset.item}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 flex-1">Kategori: {asset.category}</p>
+                        
+                        <div className="mt-auto">
+                          <div className="flex justify-between text-xs font-bold mb-1">
+                            <span className="text-emerald-600 dark:text-emerald-400">{asset.received_quantity || 0} Unit</span>
+                            <span className="text-slate-500">Target: {asset.needed_quantity || 0}</span>
+                          </div>
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                            <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -585,7 +605,7 @@ export default function Donations() {
                   {selectedAsset && (
                     <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-4 mb-4">
                       <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Aset Dipilih</p>
-                      <p className="font-bold text-slate-800 dark:text-white">{selectedAsset.title}</p>
+                      <p className="font-bold text-slate-800 dark:text-white">{selectedAsset.item}</p>
                     </div>
                   )}
 

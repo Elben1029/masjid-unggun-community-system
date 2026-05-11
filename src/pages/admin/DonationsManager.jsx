@@ -46,7 +46,7 @@ export default function DonationsManager() {
   async function fetchAssetDonations() {
     const { data, error } = await supabase
       .from('asset_waqf_donations')
-      .select('*, asset_waqf(title)')
+      .select('*, inventory(item)')
       .order('created_at', { ascending: false });
     if (!error) setAssetDonations(data || []);
   }
@@ -83,6 +83,7 @@ export default function DonationsManager() {
     await supabase.from('food_donations').update({
       date: editFood.date,
       donor_name: editFood.donor_name,
+      food_type: editFood.food_type,
       contact_number: editFood.contact_number,
       notes: editFood.notes
     }).eq('id', editFood.id);
@@ -176,6 +177,7 @@ export default function DonationsManager() {
                 <tr>
                   <th className="px-6 py-4">Tarikh Slot</th>
                   <th className="px-6 py-4">Penaja</th>
+                  <th className="px-6 py-4">Jenis Makanan</th>
                   <th className="px-6 py-4">Nota / Telefon</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Tindakan</th>
@@ -186,6 +188,7 @@ export default function DonationsManager() {
                   <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="px-6 py-4 font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY')}</td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
+                    <td className="px-6 py-4 text-slate-900 dark:text-slate-300">{d.food_type || '-'}</td>
                     <td className="px-6 py-4">
                       <div className="text-xs">{d.contact_number}</div>
                       <div className="text-xs text-slate-500">{d.notes}</div>
@@ -219,7 +222,7 @@ export default function DonationsManager() {
                   <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="px-6 py-4">{new Date(d.created_at).toLocaleDateString('ms-MY')}</td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-6 py-4">{d.asset_waqf?.title}</td>
+                    <td className="px-6 py-4">{d.inventory?.item || 'Aset Tidak Diketahui'}</td>
                     <td className="px-6 py-4 font-bold text-emerald-600">{d.quantity} Unit</td>
                     <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
                     <td className="px-6 py-4 text-right">
@@ -250,6 +253,10 @@ export default function DonationsManager() {
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nama Penaja</label>
                 <input type="text" value={editFood.donor_name} onChange={e => setEditFood({...editFood, donor_name: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Jenis Makanan</label>
+                <input type="text" value={editFood.food_type || ''} onChange={e => setEditFood({...editFood, food_type: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">No. Telefon</label>

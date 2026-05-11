@@ -30,6 +30,7 @@ export default function Dashboard() {
     { label: 'Aset & Inventori', value: '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
     { label: 'Kelulusan Tertunda', value: '0', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
   ]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -51,8 +52,9 @@ export default function Dashboard() {
         const { count: pendingDonations } = await supabase.from('cash_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: pendingKorban } = await supabase.from('korban_registrations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: pendingFood } = await supabase.from('food_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const { count: pendingAsset } = await supabase.from('asset_waqf_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         
-        const totalPending = (pendingDonations || 0) + (pendingKorban || 0) + (pendingFood || 0);
+        const totalPending = (pendingDonations || 0) + (pendingKorban || 0) + (pendingFood || 0) + (pendingAsset || 0);
 
         setStats([
           { label: 'Sumbangan (Disahkan)', value: `RM ${totalDonations.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
@@ -61,6 +63,21 @@ export default function Dashboard() {
           { label: 'Aset & Inventori', value: inventoryCount?.toLocaleString() || '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
           { label: 'Kelulusan Tertunda', value: totalPending.toLocaleString(), icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
         ]);
+
+        // Fetch Recent Transactions
+        const [cashRes, foodRes, assetRes] = await Promise.all([
+          supabase.from('cash_donations').select('id, donor_name, status, created_at, amount').order('created_at', { ascending: false }).limit(5),
+          supabase.from('food_donations').select('id, donor_name, status, created_at').order('created_at', { ascending: false }).limit(5),
+          supabase.from('asset_waqf_donations').select('id, donor_name, status, created_at').order('created_at', { ascending: false }).limit(5)
+        ]);
+
+        const recent = [
+          ...(cashRes.data || []).map(d => ({ ...d, type: 'Wang Ringgit' })),
+          ...(foodRes.data || []).map(d => ({ ...d, type: 'Tajaan Makanan' })),
+          ...(assetRes.data || []).map(d => ({ ...d, type: 'Wakaf Aset' }))
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+
+        setRecentTransactions(recent);
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       }
@@ -119,6 +136,43 @@ export default function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* Recent Transactions Table */}
+      <div className="mt-8 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-6">Transaksi Terkini (Kelulusan Diperlukan)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-medium border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th className="px-4 py-3">Tarikh</th>
+                <th className="px-4 py-3">Nama</th>
+                <th className="px-4 py-3">Jenis Transaksi</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              {recentTransactions.length === 0 ? (
+                <tr><td colSpan="4" className="px-4 py-6 text-center text-slate-500">Tiada transaksi terkini.</td></tr>
+              ) : recentTransactions.map((tx) => (
+                <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="px-4 py-3">{new Date(tx.created_at).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{tx.donor_name || 'Hamba Allah'}</td>
+                  <td className="px-4 py-3">{tx.type}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      tx.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
+                      (tx.status === 'approved' || tx.status === 'completed') ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                    }`}>
+                      {tx.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

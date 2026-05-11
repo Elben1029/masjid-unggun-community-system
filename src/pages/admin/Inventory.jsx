@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Upload, Image as ImageIcon, Box, HeartHandshake } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function Inventory() {
+  const [activeTab, setActiveTab] = useState('assets'); // 'assets' or 'needed'
   const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,11 +16,14 @@ export default function Inventory() {
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState('Baik');
   const [imageFile, setImageFile] = useState(null);
+  
+  // Waqf Fields
+  const [isNeeded, setIsNeeded] = useState(false);
+  const [neededQuantity, setNeededQuantity] = useState(0);
 
   useEffect(() => {
     fetchInventory();
 
-    // Subscribe to changes
     const subscription = supabase
       .channel('inventory_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
@@ -52,6 +56,8 @@ export default function Inventory() {
     setQuantity(1);
     setCondition('Baik');
     setImageFile(null);
+    setIsNeeded(false);
+    setNeededQuantity(0);
   };
 
   const handleOpenModal = (invItem = null) => {
@@ -61,6 +67,8 @@ export default function Inventory() {
       setCategory(invItem.category || 'Kelengkapan Solat');
       setQuantity(invItem.quantity || 1);
       setCondition(invItem.condition || 'Baik');
+      setIsNeeded(invItem.is_needed || false);
+      setNeededQuantity(invItem.needed_quantity || 0);
       setImageFile(null);
     } else {
       resetForm();
@@ -98,7 +106,15 @@ export default function Inventory() {
         imageUrl = publicUrl;
       }
 
-      const invData = { item, category, quantity: Number(quantity), condition };
+      const invData = { 
+        item, 
+        category, 
+        quantity: Number(quantity), 
+        condition,
+        is_needed: isNeeded,
+        needed_quantity: Number(neededQuantity)
+      };
+      
       if (imageUrl) invData.image_url = imageUrl;
 
       if (currentId) {
@@ -142,16 +158,28 @@ export default function Inventory() {
     inv.item?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const existingAssets = filteredInventory.filter(inv => !inv.is_needed || inv.quantity > 0);
+  const neededAssets = filteredInventory.filter(inv => inv.is_needed);
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Pengurusan Inventori</h1>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Pengurusan Inventori & Aset</h1>
         <button 
           onClick={() => handleOpenModal()}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
           Tambah Item Baru
+        </button>
+      </div>
+
+      <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
+        <button onClick={() => setActiveTab('assets')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'assets' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
+          <Box size={18} /> Aset Sedia Ada
+        </button>
+        <button onClick={() => setActiveTab('needed')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'needed' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
+          <HeartHandshake size={18} /> Keperluan Aset (Wakaf)
         </button>
       </div>
 
@@ -172,67 +200,125 @@ export default function Inventory() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-medium">
-              <tr>
-                <th className="px-6 py-4 w-16">Gambar</th>
-                <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Nama Item</th>
-                <th className="px-6 py-4">Kategori</th>
-                <th className="px-6 py-4">Kuantiti</th>
-                <th className="px-6 py-4">Keadaan</th>
-                <th className="px-6 py-4 text-right">Tindakan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {filteredInventory.length === 0 ? (
+          {activeTab === 'assets' && (
+            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-medium">
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-slate-500">Tiada item dijumpai.</td>
+                  <th className="px-6 py-4 w-16">Gambar</th>
+                  <th className="px-6 py-4">ID</th>
+                  <th className="px-6 py-4">Nama Item</th>
+                  <th className="px-6 py-4">Kategori</th>
+                  <th className="px-6 py-4">Kuantiti</th>
+                  <th className="px-6 py-4">Keadaan</th>
+                  <th className="px-6 py-4 text-right">Tindakan</th>
                 </tr>
-              ) : filteredInventory.map((inv, index) => (
-                <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    {inv.imageUrl ? (
-                      <img src={inv.imageUrl} alt={inv.item} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                        <ImageIcon size={20} className="text-slate-400" />
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-mono text-slate-500">INV-{(index + 1).toString().padStart(4, '0')}</td>
-                  <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{inv.item}</td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
-                      {inv.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium">{inv.quantity}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 ${inv.condition === 'Baik' ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${inv.condition === 'Baik' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
-                      {inv.condition}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => handleOpenModal(inv)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 mr-2">
-                      <Edit2 size={18} />
-                    </button>
-                    <button onClick={() => handleDelete(inv.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {existingAssets.length === 0 ? (
+                  <tr><td colSpan="7" className="px-6 py-8 text-center text-slate-500">Tiada item dijumpai.</td></tr>
+                ) : existingAssets.map((inv, index) => (
+                  <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      {inv.image_url ? (
+                        <img src={inv.image_url} alt={inv.item} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                          <ImageIcon size={20} className="text-slate-400" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-500">INV-{(index + 1).toString().padStart(4, '0')}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{inv.item}</td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                        {inv.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-medium">{inv.quantity}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 ${inv.condition === 'Baik' ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${inv.condition === 'Baik' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+                        {inv.condition}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => handleOpenModal(inv)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 mr-2">
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => handleDelete(inv.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1">
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === 'needed' && (
+            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-medium">
+                <tr>
+                  <th className="px-6 py-4 w-16">Gambar</th>
+                  <th className="px-6 py-4">Nama Item</th>
+                  <th className="px-6 py-4">Kategori</th>
+                  <th className="px-6 py-4">Kuantiti Diperlukan</th>
+                  <th className="px-6 py-4">Progres Wakaf</th>
+                  <th className="px-6 py-4 text-right">Tindakan</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {neededAssets.length === 0 ? (
+                  <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">Tiada aset diperlukan dijumpai.</td></tr>
+                ) : neededAssets.map((inv) => {
+                  const percent = Math.min(100, Math.round((inv.received_quantity / inv.needed_quantity) * 100)) || 0;
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-6 py-4">
+                        {inv.image_url ? (
+                          <img src={inv.image_url} alt={inv.item} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                            <ImageIcon size={20} className="text-slate-400" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{inv.item}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                          {inv.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-amber-600">{inv.needed_quantity} Unit</td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-between text-xs font-bold mb-1">
+                          <span className="text-emerald-600 dark:text-emerald-400">{inv.received_quantity} Unit</span>
+                          <span className="text-slate-500">{percent}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button onClick={() => handleOpenModal(inv)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 mr-2">
+                          <Edit2 size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(inv.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1">
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
-      {/* Modal Cipta / Edit Inventori */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto pt-24 pb-12">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative z-10">
             <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                 {currentId ? 'Edit Item' : 'Tambah Item Baru'}
@@ -272,10 +358,10 @@ export default function Inventory() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kuantiti</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kuantiti (Aset Kini)</label>
                   <input 
                     type="number" 
-                    min="1"
+                    min="0"
                     required
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
@@ -296,6 +382,32 @@ export default function Inventory() {
                   <option value="Perlu Dibaiki">Perlu Dibaiki</option>
                   <option value="Rosak">Rosak</option>
                 </select>
+              </div>
+
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                <label className="flex items-center gap-2 cursor-pointer mb-3">
+                  <input 
+                    type="checkbox" 
+                    checked={isNeeded} 
+                    onChange={(e) => setIsNeeded(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 bg-white border-emerald-300 rounded focus:ring-emerald-500 dark:focus:ring-emerald-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600"
+                  />
+                  <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400">Jadikan Keperluan Wakaf</span>
+                </label>
+                
+                {isNeeded && (
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">Kuantiti Diperlukan (Target)</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      required={isNeeded}
+                      value={neededQuantity}
+                      onChange={(e) => setNeededQuantity(e.target.value)}
+                      className="w-full px-4 py-2 border border-emerald-300 dark:border-emerald-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

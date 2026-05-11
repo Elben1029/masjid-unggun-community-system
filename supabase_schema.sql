@@ -17,14 +17,15 @@ CREATE TABLE IF NOT EXISTS public.food_donations (
     date DATE NOT NULL UNIQUE,
     donor_name TEXT,
     user_id UUID REFERENCES public.profiles(id),
-    status TEXT DEFAULT 'pending', -- pending, reserved, completed, cancelled
+    status TEXT DEFAULT 'pending', -- available, pending, approved, completed, cancelled
+    food_type TEXT,
     contact_number TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Asset Waqf (Items needed)
+-- Deprecated asset_waqf table (kept for backward compatibility during transition)
 CREATE TABLE IF NOT EXISTS public.asset_waqf (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -38,11 +39,13 @@ CREATE TABLE IF NOT EXISTS public.asset_waqf (
 
 CREATE TABLE IF NOT EXISTS public.asset_waqf_donations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    waqf_id UUID REFERENCES public.asset_waqf(id) ON DELETE CASCADE,
+    inventory_id UUID REFERENCES public.inventory(id) ON DELETE CASCADE,
+    waqf_id UUID REFERENCES public.asset_waqf(id) ON DELETE CASCADE, -- Deprecated, keep for old records
     user_id UUID REFERENCES public.profiles(id),
     donor_name TEXT,
     quantity INTEGER DEFAULT 1,
-    status TEXT DEFAULT 'pending',
+    notes TEXT,
+    status TEXT DEFAULT 'pending', -- pending, approved, rejected, completed
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -61,26 +64,32 @@ CREATE TABLE IF NOT EXISTS public.cash_donations (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Trigger for Asset Waqf
-CREATE OR REPLACE FUNCTION public.update_asset_waqf_amount()
+-- Trigger for Inventory Waqf (New)
+CREATE OR REPLACE FUNCTION public.update_inventory_waqf_amount()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' AND NEW.status = 'approved' THEN
-        UPDATE public.asset_waqf
-        SET current_amount = current_amount + NEW.quantity
-        WHERE id = NEW.waqf_id;
+        UPDATE public.inventory
+        SET received_quantity = received_quantity + NEW.quantity,
+            quantity = quantity + NEW.quantity,
+            is_needed = CASE WHEN (received_quantity + NEW.quantity) >= needed_quantity THEN false ELSE is_needed END
+        WHERE id = NEW.inventory_id;
     ELSIF TG_OP = 'UPDATE' AND NEW.status = 'approved' AND OLD.status != 'approved' THEN
-        UPDATE public.asset_waqf
-        SET current_amount = current_amount + NEW.quantity
-        WHERE id = NEW.waqf_id;
+        UPDATE public.inventory
+        SET received_quantity = received_quantity + NEW.quantity,
+            quantity = quantity + NEW.quantity,
+            is_needed = CASE WHEN (received_quantity + NEW.quantity) >= needed_quantity THEN false ELSE is_needed END
+        WHERE id = NEW.inventory_id;
     ELSIF TG_OP = 'UPDATE' AND OLD.status = 'approved' AND NEW.status != 'approved' THEN
-        UPDATE public.asset_waqf
-        SET current_amount = current_amount - OLD.quantity
-        WHERE id = NEW.waqf_id;
+        UPDATE public.inventory
+        SET received_quantity = received_quantity - OLD.quantity,
+            quantity = quantity - OLD.quantity
+        WHERE id = NEW.inventory_id;
     ELSIF TG_OP = 'DELETE' AND OLD.status = 'approved' THEN
-        UPDATE public.asset_waqf
-        SET current_amount = current_amount - OLD.quantity
-        WHERE id = OLD.waqf_id;
+        UPDATE public.inventory
+        SET received_quantity = received_quantity - OLD.quantity,
+            quantity = quantity - OLD.quantity
+        WHERE id = OLD.inventory_id;
     END IF;
     RETURN NEW;
 END;
@@ -89,7 +98,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_asset_waqf_donation ON public.asset_waqf_donations;
 CREATE TRIGGER on_asset_waqf_donation
     AFTER INSERT OR UPDATE OR DELETE ON public.asset_waqf_donations
-    FOR EACH ROW EXECUTE FUNCTION public.update_asset_waqf_amount();
+    FOR EACH ROW EXECUTE FUNCTION public.update_inventory_waqf_amount();
 
 -- Korban Registrations
 CREATE TABLE IF NOT EXISTS public.korban_registrations (
@@ -124,6 +133,13 @@ CREATE TABLE IF NOT EXISTS public.inventory (
     quantity INTEGER DEFAULT 1,
     condition TEXT DEFAULT 'Baik',
     image_url TEXT,
+    is_needed BOOLEAN DEFAULT false,
+    needed_quantity INTEGER DEFAULT 0,
+    received_quantity INTEGER DEFAULT 0,
+    minimum_required INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    location TEXT,
+    purchase_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
