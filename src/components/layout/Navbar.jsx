@@ -2,8 +2,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut, ShieldAlert } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Navbar() {
+  const { settings } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -43,11 +45,17 @@ export default function Navbar() {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-emerald-500/30 transition-all duration-300">
-              <span className="text-white font-bold text-xl">M</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-emerald-500/30 transition-all duration-300 overflow-hidden">
+              {settings?.mosque_logo_url ? (
+                <img src={settings.mosque_logo_url} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white font-bold text-xl">M</span>
+              )}
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">
-              Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span>
+              {settings?.mosque_name || (
+                <>Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span></>
+              )}
             </span>
           </Link>
 

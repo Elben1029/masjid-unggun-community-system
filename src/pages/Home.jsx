@@ -1,13 +1,26 @@
 import { ArrowRight, Calendar, Heart, Box } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSettings } from '../contexts/SettingsContext';
 
 export default function Home() {
+  const { settings } = useSettings();
+  
   return (
     <div className="flex flex-col items-center">
       {/* Hero Section */}
-      <section className="w-full relative py-20 lg:py-32 overflow-hidden flex flex-col items-center justify-center min-h-[80vh]">
+      <section 
+        className="w-full relative py-20 lg:py-32 overflow-hidden flex flex-col items-center justify-center min-h-[80vh]"
+      >
+        {/* Banner Background */}
+        {settings?.mosque_banner_url && (
+          <div 
+            className="absolute inset-0 z-0 opacity-20 dark:opacity-30 bg-cover bg-center"
+            style={{ backgroundImage: `url(${settings.mosque_banner_url})` }}
+          />
+        )}
+        
         {/* Background Decorative Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-emerald-500/10 blur-[120px]" />
           <div className="absolute top-[40%] -left-[10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[120px]" />
         </div>
@@ -23,7 +36,7 @@ export default function Home() {
           
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
             Selamat Datang ke <br />
-            <span className="text-gradient">Masjid Unggun</span>
+            <span className="text-gradient">{settings?.mosque_name || 'Masjid Unggun'}</span>
           </h1>
           
           <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">

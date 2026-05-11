@@ -1,53 +1,43 @@
 import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useState } from 'react';
+import { useSettings } from '../../contexts/SettingsContext';
 
-const funds = [
-  {
-    id: 'f1',
-    title: 'Tabung Pengurusan Masjid',
-    icon: Landmark,
-    description: 'Untuk bil utiliti, penyelenggaraan, dan pengurusan harian Masjid Unggun.',
-    color: 'from-emerald-500 to-emerald-600',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
-    iconColor: 'text-emerald-600 dark:text-emerald-400'
-  },
-  {
-    id: 'f2',
-    title: 'Tabung Kebajikan Anak Yatim',
-    icon: Heart,
-    description: 'Sumbangan khusus untuk anak-anak yatim dan asnaf di kariah Masjid Unggun.',
-    color: 'from-rose-400 to-red-500',
-    iconBg: 'bg-rose-100 dark:bg-rose-900/50',
-    iconColor: 'text-rose-600 dark:text-rose-400'
-  },
-  {
-    id: 'f3',
-    title: 'Tabung Pembangunan',
-    icon: HandHeart,
-    description: 'Bagi tujuan pembesaran dan naik taraf fasiliti masjid pada masa akan datang.',
-    color: 'from-blue-500 to-indigo-600',
-    iconBg: 'bg-blue-100 dark:bg-blue-900/50',
-    iconColor: 'text-blue-600 dark:text-blue-400'
-  }
-];
+
 
 export default function Donations() {
+  const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState('cash'); // 'cash', 'food', 'asset'
   const [selectedFund, setSelectedFund] = useState('');
-  const [settings, setSettings] = useState(null);
 
-  useEffect(() => {
-    async function fetchSettings() {
-      const { data } = await supabase
-        .from('settings')
-        .select('*')
-        .eq('id', 'global')
-        .single();
-      if (data) setSettings(data);
+  const funds = [
+    {
+      id: 'f1',
+      title: 'Tabung Pengurusan Masjid',
+      icon: Landmark,
+      description: `Untuk bil utiliti, penyelenggaraan, dan pengurusan harian ${settings?.mosque_name || 'Masjid Unggun'}.`,
+      color: 'from-emerald-500 to-emerald-600',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+      iconColor: 'text-emerald-600 dark:text-emerald-400'
+    },
+    {
+      id: 'f2',
+      title: 'Tabung Kebajikan Anak Yatim',
+      icon: Heart,
+      description: `Sumbangan khusus untuk anak-anak yatim dan asnaf di kariah ${settings?.mosque_name || 'Masjid Unggun'}.`,
+      color: 'from-rose-400 to-red-500',
+      iconBg: 'bg-rose-100 dark:bg-rose-900/50',
+      iconColor: 'text-rose-600 dark:text-rose-400'
+    },
+    {
+      id: 'f3',
+      title: 'Tabung Pembangunan',
+      icon: HandHeart,
+      description: 'Bagi tujuan pembesaran dan naik taraf fasiliti masjid pada masa akan datang.',
+      color: 'from-blue-500 to-indigo-600',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+      iconColor: 'text-blue-600 dark:text-blue-400'
     }
-    fetchSettings();
-  }, []);
+  ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -121,7 +111,11 @@ export default function Donations() {
                   <p className="font-mono text-xl font-bold text-slate-800 dark:text-white tracking-wider">{settings?.account_number || '1005 2010 1234 56'}</p>
                   <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">{settings?.account_name || 'Masjid Unggun Kota Kinabalu'}</p>
                 </div>
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${settings?.account_number || '10052010123456'}`} alt="DuitNow QR" className="w-24 h-24 rounded-lg bg-white p-2 shadow-sm" />
+                { (settings?.qr_image_url || settings?.qr_code_url) ? (
+                  <img src={settings.qr_image_url || settings.qr_code_url} alt="DuitNow QR" className="w-24 h-24 rounded-lg bg-white p-2 shadow-sm object-contain" />
+                ) : (
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${settings?.account_number || '10052010123456'}`} alt="DuitNow QR" className="w-24 h-24 rounded-lg bg-white p-2 shadow-sm" />
+                )}
               </div>
             </div>
           </div>

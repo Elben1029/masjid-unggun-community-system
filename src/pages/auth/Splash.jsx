@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Splash() {
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
@@ -23,12 +25,18 @@ export default function Splash() {
       </div>
 
       <div className={`relative z-10 flex flex-col items-center transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40 mb-8 animate-bounce-slow">
-          <span className="text-white font-bold text-5xl">M</span>
+        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40 mb-8 animate-bounce-slow overflow-hidden">
+          {settings?.mosque_logo_url ? (
+            <img src={settings.mosque_logo_url} alt="Logo" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-white font-bold text-5xl">M</span>
+          )}
         </div>
         
         <h1 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-2">
-          Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span>
+          {settings?.mosque_name || (
+            <>Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span></>
+          )}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium">
           Sistem Pengurusan Komprehensif

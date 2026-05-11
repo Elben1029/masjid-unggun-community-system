@@ -1,5 +1,6 @@
 import { Check, Info, Box } from 'lucide-react';
 import { useState } from 'react';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const packages = [
   {
@@ -26,6 +27,7 @@ const packages = [
 ];
 
 export default function Korban() {
+  const { settings } = useSettings();
   const [selectedPkg, setSelectedPkg] = useState(null);
 
   return (
@@ -36,7 +38,7 @@ export default function Korban() {
         </div>
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Pendaftaran Ibadah Korban</h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Laksanakan ibadah korban anda bersama Masjid Unggun bagi tahun 1447H. 
+          Laksanakan ibadah korban anda bersama {settings?.mosque_name || 'Masjid Unggun'} bagi tahun 1447H. 
           Pendaftaran ditutup pada 10 Zulhijjah.
         </p>
       </div>

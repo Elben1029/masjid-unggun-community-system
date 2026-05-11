@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, MessageCircle, Globe } from 'lucide-react';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Footer() {
+  const { settings } = useSettings();
+  
   return (
     <footer className="bg-slate-900 border-t border-slate-800 pt-16 pb-8 text-slate-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -10,11 +13,17 @@ export default function Footer() {
           {/* About */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                <span className="text-white font-bold">M</span>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center overflow-hidden">
+                {settings?.mosque_logo_url ? (
+                  <img src={settings.mosque_logo_url} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white font-bold">M</span>
+                )}
               </div>
               <span className="font-bold text-xl text-white">
-                Masjid <span className="text-emerald-400">Unggun</span>
+                {settings?.mosque_name || (
+                  <>Masjid <span className="text-emerald-400">Unggun</span></>
+                )}
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
@@ -55,18 +64,17 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="text-emerald-500 shrink-0 mt-0.5" size={18} />
-                <span className="text-sm text-slate-400">
-                  Masjid Unggun, Jalan Contoh,<br />
-                  88000 Kota Kinabalu, Sabah
+                <span className="text-sm text-slate-400 whitespace-pre-line">
+                  {settings?.address || 'Masjid Unggun, Jalan Contoh,\n88000 Kota Kinabalu, Sabah'}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-emerald-500 shrink-0" size={18} />
-                <span className="text-sm text-slate-400">+60 88-123 4567</span>
+                <span className="text-sm text-slate-400">{settings?.phone || '+60 88-123 4567'}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-emerald-500 shrink-0" size={18} />
-                <span className="text-sm text-slate-400">admin@masjidunggun.com</span>
+                <span className="text-sm text-slate-400">{settings?.email || 'admin@masjidunggun.com'}</span>
               </li>
             </ul>
           </div>
@@ -74,7 +82,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Masjid Unggun Management System. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {settings?.mosque_name || 'Masjid Unggun'} Management System. All rights reserved.</p>
           <div className="flex gap-4">
             <Link to="/privacy" className="hover:text-slate-300">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-300">Terms of Service</Link>

@@ -103,13 +103,16 @@ CREATE TABLE IF NOT EXISTS public.settings (
     mosque_name TEXT,
     address TEXT,
     phone TEXT,
+    email TEXT,
     bank_name TEXT,
     account_number TEXT,
     account_name TEXT,
     org_chart_url TEXT,
+    organization_chart_url TEXT,
     mosque_logo_url TEXT,
     mosque_banner_url TEXT,
     qr_image_url TEXT,
+    qr_code_url TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

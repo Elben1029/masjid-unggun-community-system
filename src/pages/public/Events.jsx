@@ -1,8 +1,10 @@
 import { Calendar, Clock, MapPin, Users, Image as ImageIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Events() {
+  const { settings } = useSettings();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('Semua');
@@ -34,7 +36,7 @@ export default function Events() {
       <div className="mb-10 text-center">
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Acara & Program</h1>
         <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Sertai pelbagai program keilmuan dan aktiviti kemasyarakatan yang dianjurkan oleh Masjid Unggun.
+          Sertai pelbagai program keilmuan dan aktiviti kemasyarakatan yang dianjurkan oleh {settings?.mosque_name || 'Masjid Unggun'}.
         </p>
       </div>
 

@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Save, Info, UploadCloud, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Settings() {
+  const { settings, loading: settingsLoading, refreshSettings } = useSettings();
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
   
   // Settings State
-  const [mosqueName, setMosqueName] = useState('Masjid Unggun');
+  const [mosqueName, setMosqueName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   
   // Bank Details
   const [bankName, setBankName] = useState('');
@@ -23,36 +25,20 @@ export default function Settings() {
   const [qrImageUrl, setQrImageUrl] = useState('');
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('settings')
-          .select('*')
-          .eq('id', 'global')
-          .single();
-        
-        if (error && error.code !== 'PGRST116') throw error;
-
-        if (data) {
-          if (data.mosque_name) setMosqueName(data.mosque_name);
-          if (data.address) setAddress(data.address);
-          if (data.phone) setPhone(data.phone);
-          if (data.bank_name) setBankName(data.bank_name);
-          if (data.account_number) setAccountNumber(data.account_number);
-          if (data.account_name) setAccountName(data.account_name);
-          if (data.org_chart_url) setOrgChartUrl(data.org_chart_url);
-          if (data.mosque_logo_url) setMosqueLogoUrl(data.mosque_logo_url);
-          if (data.mosque_banner_url) setMosqueBannerUrl(data.mosque_banner_url);
-          if (data.qr_image_url) setQrImageUrl(data.qr_image_url);
-        }
-      } catch (err) {
-        console.error("Error fetching settings:", err);
-      } finally {
-        setFetching(false);
-      }
-    };
-    fetchSettings();
-  }, []);
+    if (!settingsLoading && settings) {
+      setMosqueName(settings.mosque_name || '');
+      setAddress(settings.address || '');
+      setPhone(settings.phone || '');
+      setEmail(settings.email || '');
+      setBankName(settings.bank_name || '');
+      setAccountNumber(settings.account_number || '');
+      setAccountName(settings.account_name || '');
+      setOrgChartUrl(settings.org_chart_url || settings.organization_chart_url || '');
+      setMosqueLogoUrl(settings.mosque_logo_url || '');
+      setMosqueBannerUrl(settings.mosque_banner_url || '');
+      setQrImageUrl(settings.qr_image_url || settings.qr_code_url || '');
+    }
+  }, [settings, settingsLoading]);
 
   const handleImageUpload = async (event, fieldName) => {
     try {
@@ -97,17 +83,21 @@ export default function Settings() {
           mosque_name: mosqueName,
           address,
           phone,
+          email,
           bank_name: bankName,
           account_number: accountNumber,
           account_name: accountName,
           org_chart_url: orgChartUrl,
+          organization_chart_url: orgChartUrl, // Backward compatibility
           mosque_logo_url: mosqueLogoUrl,
           mosque_banner_url: mosqueBannerUrl,
           qr_image_url: qrImageUrl,
+          qr_code_url: qrImageUrl, // Backward compatibility
           updated_at: new Date().toISOString()
         });
       
       if (error) throw error;
+      await refreshSettings();
       alert("Tetapan berjaya disimpan.");
     } catch (err) {
       console.error("Error saving settings:", err);
@@ -147,7 +137,7 @@ export default function Settings() {
     </div>
   );
 
-  if (fetching) return <div className="text-center py-10 flex flex-col items-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>Memuatkan tetapan...</div>;
+  if (settingsLoading) return <div className="text-center py-10 flex flex-col items-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>Memuatkan tetapan...</div>;
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -189,6 +179,16 @@ export default function Settings() {
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
                 placeholder="Cth: 088-123456"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Emel Rasmi</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" 
+                placeholder="Cth: admin@masjidunggun.com"
               />
             </div>
           </div>

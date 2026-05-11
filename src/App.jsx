@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import PublicLayout from './layouts/PublicLayout';
 import AdminLayout from './layouts/AdminLayout';
 import Home from './pages/Home';
@@ -27,9 +28,10 @@ import Profile from './pages/auth/Profile';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
+    <SettingsProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
           {/* Auth/Standalone Routes */}
           <Route path="/splash" element={<Splash />} />
           <Route path="/login" element={<Login />} />
@@ -65,7 +67,8 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
-      </Router>
-    </AuthProvider>
+        </Router>
+      </AuthProvider>
+    </SettingsProvider>
   );
 }

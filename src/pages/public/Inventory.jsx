@@ -1,8 +1,10 @@
 import { Box, Search, Filter } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Inventory() {
+  const { settings } = useSettings();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +31,7 @@ export default function Inventory() {
         </div>
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Inventori Masjid</h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Senarai aset dan kelengkapan Masjid Unggun yang boleh dipinjam atau digunakan oleh kariah.
+          Senarai aset dan kelengkapan {settings?.mosque_name || 'Masjid Unggun'} yang boleh dipinjam atau digunakan oleh kariah.
         </p>
       </div>
 
