@@ -1,12 +1,30 @@
 -- Setup Profile and Roles
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Helper function for JWT admin check
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+DECLARE
+    is_profile_admin BOOLEAN;
+BEGIN
+    -- Check JWT first
+    IF coalesce((auth.jwt() ->> 'role'), '') = 'admin' OR coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin' THEN
+        RETURN true;
+    END IF;
+
+    -- Fallback to profile (Security Definer avoids recursion)
+    SELECT role = 'admin' INTO is_profile_admin FROM public.profiles WHERE id = auth.uid();
+    RETURN coalesce(is_profile_admin, false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 -- Profiles table to store user roles and metadata
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     phone TEXT,
     role TEXT DEFAULT 'guest',
+    role_version INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -14,7 +32,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Food Donations (Calendar slots)
 CREATE TABLE IF NOT EXISTS public.food_donations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    date DATE NOT NULL UNIQUE,
+    date DATE NOT NULL,
+    slot TEXT NOT NULL DEFAULT 'lunch', -- breakfast, lunch, dinner
     donor_name TEXT,
     user_id UUID REFERENCES public.profiles(id),
     status TEXT DEFAULT 'pending', -- available, pending, approved, completed, cancelled
@@ -22,7 +41,8 @@ CREATE TABLE IF NOT EXISTS public.food_donations (
     contact_number TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(date, slot)
 );
 
 -- Deprecated asset_waqf table (kept for backward compatibility during transition)
@@ -60,6 +80,25 @@ CREATE TABLE IF NOT EXISTS public.cash_donations (
     reference_number TEXT,
     receipt_url TEXT,
     status TEXT DEFAULT 'pending', -- pending, verified, approved
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Inventory table
+CREATE TABLE IF NOT EXISTS public.inventory (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item TEXT NOT NULL,
+    category TEXT,
+    quantity INTEGER DEFAULT 1,
+    item_condition TEXT DEFAULT 'Baik',
+    image_url TEXT,
+    is_needed BOOLEAN DEFAULT false,
+    needed_quantity INTEGER DEFAULT 0,
+    received_quantity INTEGER DEFAULT 0,
+    minimum_required INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    location TEXT,
+    purchase_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -125,25 +164,6 @@ CREATE TABLE IF NOT EXISTS public.events (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Inventory table
-CREATE TABLE IF NOT EXISTS public.inventory (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    item TEXT NOT NULL,
-    category TEXT,
-    quantity INTEGER DEFAULT 1,
-    condition TEXT DEFAULT 'Baik',
-    image_url TEXT,
-    is_needed BOOLEAN DEFAULT false,
-    needed_quantity INTEGER DEFAULT 0,
-    received_quantity INTEGER DEFAULT 0,
-    minimum_required INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'active',
-    location TEXT,
-    purchase_date DATE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- Settings table (Global singleton)
 CREATE TABLE IF NOT EXISTS public.settings (
     id TEXT PRIMARY KEY,
@@ -201,61 +221,70 @@ ALTER TABLE public.cash_donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.korban_registrations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
-CREATE POLICY "Anyone can view profiles" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL USING (public.is_admin());
 
 -- Events Policies
+DROP POLICY IF EXISTS "Anyone can view events" ON public.events;
+DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
 CREATE POLICY "Anyone can view events" ON public.events FOR SELECT USING (true);
-CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (public.is_admin());
 
 -- Inventory Policies
+DROP POLICY IF EXISTS "Anyone can view inventory" ON public.inventory;
+DROP POLICY IF EXISTS "Admins can manage inventory" ON public.inventory;
 CREATE POLICY "Anyone can view inventory" ON public.inventory FOR SELECT USING (true);
-CREATE POLICY "Admins can manage inventory" ON public.inventory FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage inventory" ON public.inventory FOR ALL USING (public.is_admin());
 
 -- Settings Policies
+DROP POLICY IF EXISTS "Anyone can view settings" ON public.settings;
+DROP POLICY IF EXISTS "Admins can manage settings" ON public.settings;
 CREATE POLICY "Anyone can view settings" ON public.settings FOR SELECT USING (true);
-CREATE POLICY "Admins can manage settings" ON public.settings FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage settings" ON public.settings FOR ALL USING (public.is_admin());
 
 -- Food Donations Policies
+DROP POLICY IF EXISTS "Anyone can view food donations" ON public.food_donations;
+DROP POLICY IF EXISTS "Anyone can create food donations" ON public.food_donations;
+DROP POLICY IF EXISTS "Users can update own food donations" ON public.food_donations;
+DROP POLICY IF EXISTS "Admins can manage food donations" ON public.food_donations;
 CREATE POLICY "Anyone can view food donations" ON public.food_donations FOR SELECT USING (true);
 CREATE POLICY "Anyone can create food donations" ON public.food_donations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own food donations" ON public.food_donations FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
-CREATE POLICY "Admins can manage food donations" ON public.food_donations FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Users can update own food donations" ON public.food_donations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage food donations" ON public.food_donations FOR ALL USING (public.is_admin());
 
 -- Asset Waqf Policies
+DROP POLICY IF EXISTS "Anyone can view asset waqf" ON public.asset_waqf;
+DROP POLICY IF EXISTS "Admins can manage asset waqf" ON public.asset_waqf;
 CREATE POLICY "Anyone can view asset waqf" ON public.asset_waqf FOR SELECT USING (true);
-CREATE POLICY "Admins can manage asset waqf" ON public.asset_waqf FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage asset waqf" ON public.asset_waqf FOR ALL USING (public.is_admin());
 
 -- Asset Waqf Donations Policies
+DROP POLICY IF EXISTS "Anyone can view asset waqf donations" ON public.asset_waqf_donations;
+DROP POLICY IF EXISTS "Anyone can donate to asset waqf" ON public.asset_waqf_donations;
+DROP POLICY IF EXISTS "Admins can manage asset waqf donations" ON public.asset_waqf_donations;
 CREATE POLICY "Anyone can view asset waqf donations" ON public.asset_waqf_donations FOR SELECT USING (true);
 CREATE POLICY "Anyone can donate to asset waqf" ON public.asset_waqf_donations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can manage asset waqf donations" ON public.asset_waqf_donations FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage asset waqf donations" ON public.asset_waqf_donations FOR ALL USING (public.is_admin());
 
 -- Cash Donations Policies
-CREATE POLICY "Anyone can view own cash donations" ON public.cash_donations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+DROP POLICY IF EXISTS "Anyone can view own cash donations" ON public.cash_donations;
+DROP POLICY IF EXISTS "Anyone can submit cash donations" ON public.cash_donations;
+DROP POLICY IF EXISTS "Admins can manage cash donations" ON public.cash_donations;
+CREATE POLICY "Anyone can view own cash donations" ON public.cash_donations FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Anyone can submit cash donations" ON public.cash_donations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can manage cash donations" ON public.cash_donations FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage cash donations" ON public.cash_donations FOR ALL USING (public.is_admin());
 
 -- Korban Registrations Policies
-CREATE POLICY "Anyone can view own korban" ON public.korban_registrations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+DROP POLICY IF EXISTS "Anyone can view own korban" ON public.korban_registrations;
+DROP POLICY IF EXISTS "Anyone can register for korban" ON public.korban_registrations;
+DROP POLICY IF EXISTS "Admins can manage korban" ON public.korban_registrations;
+CREATE POLICY "Anyone can view own korban" ON public.korban_registrations FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Anyone can register for korban" ON public.korban_registrations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can manage korban" ON public.korban_registrations FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
-);
+CREATE POLICY "Admins can manage korban" ON public.korban_registrations FOR ALL USING (public.is_admin());
 
 -- ==========================================
 -- STORAGE BUCKETS & POLICIES
@@ -274,29 +303,47 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage Policies for 'events'
+DROP POLICY IF EXISTS "Public Access for events" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload for events" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update for events" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete for events" ON storage.objects;
 CREATE POLICY "Public Access for events" ON storage.objects FOR SELECT USING (bucket_id = 'events');
-CREATE POLICY "Admin Upload for events" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'events' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Update for events" ON storage.objects FOR UPDATE USING (bucket_id = 'events' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Delete for events" ON storage.objects FOR DELETE USING (bucket_id = 'events' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Upload for events" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'events' AND public.is_admin());
+CREATE POLICY "Admin Update for events" ON storage.objects FOR UPDATE USING (bucket_id = 'events' AND public.is_admin());
+CREATE POLICY "Admin Delete for events" ON storage.objects FOR DELETE USING (bucket_id = 'events' AND public.is_admin());
 
 -- Storage Policies for 'inventory'
+DROP POLICY IF EXISTS "Public Access for inventory" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload for inventory" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update for inventory" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete for inventory" ON storage.objects;
 CREATE POLICY "Public Access for inventory" ON storage.objects FOR SELECT USING (bucket_id = 'inventory');
-CREATE POLICY "Admin Upload for inventory" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'inventory' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Update for inventory" ON storage.objects FOR UPDATE USING (bucket_id = 'inventory' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Delete for inventory" ON storage.objects FOR DELETE USING (bucket_id = 'inventory' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Upload for inventory" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'inventory' AND public.is_admin());
+CREATE POLICY "Admin Update for inventory" ON storage.objects FOR UPDATE USING (bucket_id = 'inventory' AND public.is_admin());
+CREATE POLICY "Admin Delete for inventory" ON storage.objects FOR DELETE USING (bucket_id = 'inventory' AND public.is_admin());
 
 -- Storage Policies for 'receipts'
-CREATE POLICY "Admin Access for receipts" ON storage.objects FOR SELECT USING (bucket_id = 'receipts' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+DROP POLICY IF EXISTS "Admin Access for receipts" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Upload for receipts" ON storage.objects;
+CREATE POLICY "Admin Access for receipts" ON storage.objects FOR SELECT USING (bucket_id = 'receipts' AND public.is_admin());
 CREATE POLICY "Authenticated Upload for receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts' AND auth.role() = 'authenticated');
 
 -- Storage Policies for 'qr'
+DROP POLICY IF EXISTS "Public Access for qr" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload for qr" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update for qr" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete for qr" ON storage.objects;
 CREATE POLICY "Public Access for qr" ON storage.objects FOR SELECT USING (bucket_id = 'qr');
-CREATE POLICY "Admin Upload for qr" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'qr' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Update for qr" ON storage.objects FOR UPDATE USING (bucket_id = 'qr' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Delete for qr" ON storage.objects FOR DELETE USING (bucket_id = 'qr' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Upload for qr" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'qr' AND public.is_admin());
+CREATE POLICY "Admin Update for qr" ON storage.objects FOR UPDATE USING (bucket_id = 'qr' AND public.is_admin());
+CREATE POLICY "Admin Delete for qr" ON storage.objects FOR DELETE USING (bucket_id = 'qr' AND public.is_admin());
 
 -- Storage Policies for 'settings'
+DROP POLICY IF EXISTS "Public Access for settings" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload for settings" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update for settings" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete for settings" ON storage.objects;
 CREATE POLICY "Public Access for settings" ON storage.objects FOR SELECT USING (bucket_id = 'settings');
-CREATE POLICY "Admin Upload for settings" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Update for settings" ON storage.objects FOR UPDATE USING (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "Admin Delete for settings" ON storage.objects FOR DELETE USING (bucket_id = 'settings' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "Admin Upload for settings" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'settings' AND public.is_admin());
+CREATE POLICY "Admin Update for settings" ON storage.objects FOR UPDATE USING (bucket_id = 'settings' AND public.is_admin());
+CREATE POLICY "Admin Delete for settings" ON storage.objects FOR DELETE USING (bucket_id = 'settings' AND public.is_admin());

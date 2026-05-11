@@ -82,6 +82,7 @@ export default function DonationsManager() {
     e.preventDefault();
     await supabase.from('food_donations').update({
       date: editFood.date,
+      slot: editFood.slot,
       donor_name: editFood.donor_name,
       food_type: editFood.food_type,
       contact_number: editFood.contact_number,
@@ -175,7 +176,7 @@ export default function DonationsManager() {
             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300">
                 <tr>
-                  <th className="px-6 py-4">Tarikh Slot</th>
+                  <th className="px-6 py-4">Tarikh & Slot</th>
                   <th className="px-6 py-4">Penaja</th>
                   <th className="px-6 py-4">Jenis Makanan</th>
                   <th className="px-6 py-4">Nota / Telefon</th>
@@ -186,7 +187,10 @@ export default function DonationsManager() {
               <tbody>
                 {foodDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(d => (
                   <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
-                    <td className="px-6 py-4 font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY')}</td>
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY')}</div>
+                      <div className="text-xs text-slate-500 uppercase font-medium mt-0.5">{d.slot === 'breakfast' ? 'Sarapan' : d.slot === 'lunch' ? 'Tengahari' : d.slot === 'dinner' ? 'Malam' : d.slot}</div>
+                    </td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
                     <td className="px-6 py-4 text-slate-900 dark:text-slate-300">{d.food_type || '-'}</td>
                     <td className="px-6 py-4">
@@ -249,6 +253,14 @@ export default function DonationsManager() {
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Tarikh Slot</label>
                 <input type="date" value={editFood.date} onChange={e => setEditFood({...editFood, date: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Pilih Slot</label>
+                <select value={editFood.slot} onChange={e => setEditFood({...editFood, slot: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required>
+                  <option value="breakfast">Sarapan</option>
+                  <option value="lunch">Tengahari</option>
+                  <option value="dinner">Malam</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nama Penaja</label>

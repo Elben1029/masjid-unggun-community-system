@@ -63,8 +63,8 @@ export default function Inventory() {
                   <span className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">
                     Kuantiti: {item.quantity}
                   </span>
-                  <span className={`px-3 py-1 rounded-full ${item.condition === 'Baik' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                    {item.condition}
+                  <span className={`px-3 py-1 rounded-full ${item.item_condition === 'Baik' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                    {item.item_condition}
                   </span>
                 </div>
               </div>

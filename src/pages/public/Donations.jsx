@@ -25,6 +25,7 @@ export default function Donations() {
   const [foodDates, setFoodDates] = useState([]);
   const [foodForm, setFoodForm] = useState({
     date: '',
+    slot: '',
     donorName: '',
     foodType: '',
     contactNumber: '',
@@ -84,7 +85,7 @@ export default function Donations() {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('food_donations')
-        .select('date, status')
+        .select('date, slot, status')
         .gte('date', today);
       if (!error && data) {
         setFoodDates(data);
@@ -155,13 +156,15 @@ export default function Donations() {
   const handleFoodSubmit = async (e) => {
     e.preventDefault();
     if (!foodForm.date) return alert("Sila pilih tarikh tajaan.");
-    const isTaken = foodDates.some(f => f.date === foodForm.date && (f.status === 'approved' || f.status === 'completed' || f.status === 'reserved'));
-    if (isTaken) return alert("Maaf, tarikh ini telah ditempah oleh jemaah lain.");
+    if (!foodForm.slot) return alert("Sila pilih slot tajaan.");
+    const isTaken = foodDates.some(f => f.date === foodForm.date && f.slot === foodForm.slot && (f.status === 'approved' || f.status === 'completed' || f.status === 'pending'));
+    if (isTaken) return alert("Maaf, slot ini telah ditempah.");
 
     setFoodLoading(true);
     try {
       const { error } = await supabase.from('food_donations').insert({
         date: foodForm.date,
+        slot: foodForm.slot,
         donor_name: foodForm.donorName || 'Hamba Allah',
         food_type: foodForm.foodType,
         user_id: user?.id || null,
@@ -173,7 +176,7 @@ export default function Donations() {
       if (error) throw error;
       setFoodSuccess(true);
       fetchFoodDates();
-      setFoodForm({ date: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
+      setFoodForm({ date: '', slot: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
       setTimeout(() => setFoodSuccess(false), 5000);
     } catch (err) {
       console.error(err);
@@ -221,12 +224,16 @@ export default function Donations() {
     return dates;
   };
 
-  const isDateTaken = (dateStr) => {
-    return foodDates.some(f => f.date === dateStr && (f.status === 'approved' || f.status === 'completed' || f.status === 'reserved'));
+  const isSlotTaken = (dateStr, slot) => {
+    return foodDates.some(f => f.date === dateStr && f.slot === slot && (f.status === 'approved' || f.status === 'completed'));
   };
 
-  const isDatePending = (dateStr) => {
-    return foodDates.some(f => f.date === dateStr && f.status === 'pending');
+  const isSlotPending = (dateStr, slot) => {
+    return foodDates.some(f => f.date === dateStr && f.slot === slot && f.status === 'pending');
+  };
+
+  const isDateFullyTaken = (dateStr) => {
+    return ['breakfast', 'lunch', 'dinner'].every(slot => isSlotTaken(dateStr, slot) || isSlotPending(dateStr, slot));
   };
 
   return (
@@ -415,27 +422,28 @@ export default function Donations() {
                 const day = dateObj.toLocaleDateString('ms-MY', { weekday: 'short' });
                 const dateNum = dateObj.getDate();
                 const month = dateObj.toLocaleDateString('ms-MY', { month: 'short' });
-                const taken = isDateTaken(dateStr);
-                const pending = isDatePending(dateStr);
+                const fullyTaken = isDateFullyTaken(dateStr);
                 const isSelected = foodForm.date === dateStr;
 
                 return (
                   <button
                     key={dateStr}
-                    onClick={() => !taken && setFoodForm({...foodForm, date: dateStr})}
-                    disabled={taken}
+                    onClick={() => !fullyTaken && setFoodForm({...foodForm, date: dateStr, slot: ''})}
+                    disabled={fullyTaken}
                     className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 ${
-                      taken ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
+                      fullyTaken ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
                       isSelected ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md dark:bg-emerald-900/20 dark:text-emerald-400' :
-                      pending ? 'bg-amber-50 border-amber-200 text-amber-700 hover:border-amber-400 dark:bg-amber-900/10 dark:border-amber-800' :
                       'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:shadow-sm dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'
                     }`}
                   >
                     <span className="text-xs uppercase font-bold opacity-70">{day}</span>
                     <span className="text-xl font-black my-1">{dateNum}</span>
                     <span className="text-xs">{month}</span>
-                    {taken && <span className="text-[10px] mt-1 text-red-500 font-bold">Penuh</span>}
-                    {!taken && pending && <span className="text-[10px] mt-1 text-amber-500 font-bold">Pending</span>}
+                    <div className="flex gap-1 mt-2">
+                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'breakfast') ? 'bg-red-500' : isSlotPending(dateStr, 'breakfast') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Sarapan" />
+                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'lunch') ? 'bg-red-500' : isSlotPending(dateStr, 'lunch') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Tengahari" />
+                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'dinner') ? 'bg-red-500' : isSlotPending(dateStr, 'dinner') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Malam" />
+                    </div>
                   </button>
                 );
               })}
@@ -460,11 +468,41 @@ export default function Donations() {
             ) : (
               <form onSubmit={handleFoodSubmit} className="space-y-5">
                 {foodForm.date ? (
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800 flex items-center gap-3">
-                    <CalendarIcon size={24} />
-                    <div>
-                      <p className="text-xs opacity-80 uppercase font-bold">Tarikh Dipilih</p>
-                      <p className="font-bold text-lg">{new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800">
+                    <div className="flex items-center gap-3 mb-4">
+                      <CalendarIcon size={24} />
+                      <div>
+                        <p className="text-xs opacity-80 uppercase font-bold">Tarikh Dipilih</p>
+                        <p className="font-bold text-lg">{new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm font-bold mb-2">Pilih Slot Masa:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'breakfast', label: 'Sarapan' },
+                        { id: 'lunch', label: 'Tengahari' },
+                        { id: 'dinner', label: 'Malam' }
+                      ].map(s => {
+                        const taken = isSlotTaken(foodForm.date, s.id);
+                        const pending = isSlotPending(foodForm.date, s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            disabled={taken || pending}
+                            onClick={() => setFoodForm({...foodForm, slot: s.id})}
+                            className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
+                              taken || pending ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
+                              foodForm.slot === s.id ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' :
+                              'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:bg-slate-900 dark:border-emerald-800 dark:text-emerald-400'
+                            }`}
+                          >
+                            {s.label}
+                            {(taken || pending) && <span className="block text-[10px] mt-0.5">{taken ? 'Penuh' : 'Pending'}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (
@@ -520,7 +558,7 @@ export default function Donations() {
 
                 <button
                   type="submit"
-                  disabled={!foodForm.date || foodLoading}
+                  disabled={!foodForm.date || !foodForm.slot || foodLoading}
                   className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
                 >
                   {foodLoading ? 'Menghantar...' : 'Sahkan Tempahan'}

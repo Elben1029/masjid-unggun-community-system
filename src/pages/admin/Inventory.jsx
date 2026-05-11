@@ -14,7 +14,7 @@ export default function Inventory() {
   const [item, setItem] = useState('');
   const [category, setCategory] = useState('Kelengkapan Solat');
   const [quantity, setQuantity] = useState(1);
-  const [condition, setCondition] = useState('Baik');
+  const [itemCondition, setItemCondition] = useState('Baik');
   const [imageFile, setImageFile] = useState(null);
   
   // Waqf Fields
@@ -66,7 +66,7 @@ export default function Inventory() {
       setItem(invItem.item || '');
       setCategory(invItem.category || 'Kelengkapan Solat');
       setQuantity(invItem.quantity || 1);
-      setCondition(invItem.condition || 'Baik');
+      setItemCondition(invItem.item_condition || 'Baik');
       setIsNeeded(invItem.is_needed || false);
       setNeededQuantity(invItem.needed_quantity || 0);
       setImageFile(null);
@@ -110,7 +110,7 @@ export default function Inventory() {
         item, 
         category, 
         quantity: Number(quantity), 
-        condition,
+        item_condition: itemCondition,
         is_needed: isNeeded,
         needed_quantity: Number(neededQuantity)
       };
@@ -236,9 +236,9 @@ export default function Inventory() {
                     </td>
                     <td className="px-6 py-4 font-medium">{inv.quantity}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 ${inv.condition === 'Baik' ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${inv.condition === 'Baik' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
-                        {inv.condition}
+                      <span className={`inline-flex items-center gap-1.5 ${inv.item_condition === 'Baik' ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${inv.item_condition === 'Baik' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+                        {inv.item_condition}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -373,8 +373,8 @@ export default function Inventory() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Keadaan</label>
                 <select 
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
+                  value={itemCondition}
+                  onChange={(e) => setItemCondition(e.target.value)}
                   className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                 >
                   <option value="Baik">Baik</option>
