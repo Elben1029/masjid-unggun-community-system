@@ -1,6 +1,64 @@
 -- Setup Profile and Roles
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- ==========================================
+-- SAFE MIGRATIONS FOR EXISTING TABLES
+-- ==========================================
+
+-- 1. Migrate Inventory table
+DO $$ 
+BEGIN 
+    -- Rename condition to item_condition
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='condition') THEN 
+        ALTER TABLE public.inventory RENAME COLUMN condition TO item_condition; 
+    END IF; 
+    
+    -- Add new Waqf tracking columns
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='inventory' AND column_name='is_needed') THEN 
+        ALTER TABLE public.inventory ADD COLUMN is_needed BOOLEAN DEFAULT false;
+        ALTER TABLE public.inventory ADD COLUMN needed_quantity INTEGER DEFAULT 0;
+        ALTER TABLE public.inventory ADD COLUMN received_quantity INTEGER DEFAULT 0;
+        ALTER TABLE public.inventory ADD COLUMN minimum_required INTEGER DEFAULT 0;
+        ALTER TABLE public.inventory ADD COLUMN status TEXT DEFAULT 'active';
+        ALTER TABLE public.inventory ADD COLUMN location TEXT;
+        ALTER TABLE public.inventory ADD COLUMN purchase_date DATE;
+    END IF; 
+END $$;
+
+-- 2. Migrate Food Donations table
+DO $$ 
+BEGIN 
+    -- Add slot and food_type
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='food_donations' AND column_name='slot') THEN 
+        ALTER TABLE public.food_donations ADD COLUMN slot TEXT NOT NULL DEFAULT 'lunch';
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='food_donations' AND column_name='food_type') THEN 
+        ALTER TABLE public.food_donations ADD COLUMN food_type TEXT;
+    END IF;
+END $$;
+
+-- Drop old UNIQUE constraint and add composite constraint
+ALTER TABLE public.food_donations DROP CONSTRAINT IF EXISTS food_donations_date_key;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'food_donations_date_slot_key') THEN
+        ALTER TABLE public.food_donations ADD CONSTRAINT food_donations_date_slot_key UNIQUE(date, slot);
+    END IF;
+END $$;
+
+-- 3. Migrate Asset Waqf Donations
+DO $$ 
+BEGIN 
+    -- Add inventory_id column
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='asset_waqf_donations' AND column_name='inventory_id') THEN 
+        ALTER TABLE public.asset_waqf_donations ADD COLUMN inventory_id UUID;
+    END IF; 
+END $$;
+
+-- ==========================================
+-- SCHEMA DEFINITIONS
+-- ==========================================
+
 -- Helper function for JWT admin check
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
@@ -69,6 +127,10 @@ CREATE TABLE IF NOT EXISTS public.asset_waqf_donations (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Force rebuild FK constraint for postgREST cache
+ALTER TABLE public.asset_waqf_donations DROP CONSTRAINT IF EXISTS asset_waqf_donations_inventory_id_fkey;
+ALTER TABLE public.asset_waqf_donations ADD CONSTRAINT asset_waqf_donations_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES public.inventory(id) ON DELETE CASCADE;
 
 -- Cash Donations
 CREATE TABLE IF NOT EXISTS public.cash_donations (
@@ -347,3 +409,6 @@ CREATE POLICY "Public Access for settings" ON storage.objects FOR SELECT USING (
 CREATE POLICY "Admin Upload for settings" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'settings' AND public.is_admin());
 CREATE POLICY "Admin Update for settings" ON storage.objects FOR UPDATE USING (bucket_id = 'settings' AND public.is_admin());
 CREATE POLICY "Admin Delete for settings" ON storage.objects FOR DELETE USING (bucket_id = 'settings' AND public.is_admin());
+
+-- Force PostgREST to reload schema and recognize new foreign keys
+NOTIFY pgrst, 'reload schema';

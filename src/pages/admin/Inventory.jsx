@@ -54,7 +54,7 @@ export default function Inventory() {
     setItem('');
     setCategory('Kelengkapan Solat');
     setQuantity(1);
-    setCondition('Baik');
+    setItemCondition('Baik');
     setImageFile(null);
     setIsNeeded(false);
     setNeededQuantity(0);
