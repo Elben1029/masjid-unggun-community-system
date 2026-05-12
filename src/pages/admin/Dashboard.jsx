@@ -73,7 +73,7 @@ export default function Dashboard() {
 
         const recent = [
           ...(cashRes.data || []).map(d => ({ ...d, type: 'Wang Ringgit' })),
-          ...(foodRes.data || []).map(d => ({ ...d, type: 'Tajaan Makanan' })),
+          ...(foodRes.data || []).map(d => ({ ...d, type: 'Jadual Sumbangan Makanan' })),
           ...(assetRes.data || []).map(d => ({ ...d, type: 'Wakaf Aset' }))
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
 

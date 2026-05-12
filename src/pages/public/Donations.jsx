@@ -8,6 +8,7 @@ export default function Donations() {
   const { settings } = useSettings();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('cash'); // 'cash', 'food', 'asset'
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   
   // --- CASH DONATION STATE ---
   const [selectedFund, setSelectedFund] = useState('');
@@ -77,16 +78,24 @@ export default function Donations() {
   // FETCH DATA
   useEffect(() => {
     fetchFoodDates();
+  }, [currentMonth]);
+
+  useEffect(() => {
     fetchAssets();
   }, []);
 
   const fetchFoodDates = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('food_donations')
         .select('date, slot, status')
-        .gte('date', today);
+        .gte('date', startDate)
+        .lte('date', endDate);
       if (!error && data) {
         setFoodDates(data);
       }
@@ -115,6 +124,10 @@ export default function Donations() {
     e.preventDefault();
     if (!selectedFund) return alert("Sila pilih tabung terlebih dahulu.");
     if (!cashFile) return alert("Sila muat naik resit transaksi.");
+    if (!cashForm.amount || Number(cashForm.amount) <= 0) {
+      alert("Jumlah sumbangan tidak sah");
+      return;
+    }
     
     setCashLoading(true);
     try {
@@ -133,14 +146,18 @@ export default function Donations() {
       const { error } = await supabase.from('cash_donations').insert({
         user_id: user?.id || null,
         donor_name: cashForm.donorName || 'Hamba Allah',
-        amount: parseFloat(cashForm.amount),
+        amount: Number(cashForm.amount),
         payment_method: cashForm.paymentMethod,
-        reference_number: cashForm.reference,
-        receipt_url: urlData.publicUrl,
+        reference_number: cashForm.reference || null,
+        receipt_url: urlData.publicUrl || null,
         status: 'pending'
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Cash donation insert error:", error);
+        alert(error.message);
+        return;
+      }
       setCashSuccess(true);
       setCashForm({ donorName: '', amount: '', paymentMethod: 'qr', reference: '' });
       setCashFile(null);
@@ -155,13 +172,24 @@ export default function Donations() {
 
   const handleFoodSubmit = async (e) => {
     e.preventDefault();
-    if (!foodForm.date) return alert("Sila pilih tarikh tajaan.");
-    if (!foodForm.slot) return alert("Sila pilih slot tajaan.");
-    const isTaken = foodDates.some(f => f.date === foodForm.date && f.slot === foodForm.slot && (f.status === 'approved' || f.status === 'completed' || f.status === 'pending'));
-    if (isTaken) return alert("Maaf, slot ini telah ditempah.");
+    if (!foodForm.date) return alert("Sila pilih tarikh.");
+    if (!foodForm.slot) return alert("Sila pilih slot.");
 
     setFoodLoading(true);
     try {
+      const { data: existingBooking } = await supabase
+        .from("food_donations")
+        .select("id")
+        .eq("date", foodForm.date)
+        .eq("slot", foodForm.slot)
+        .maybeSingle();
+
+      if (existingBooking) {
+        alert("Slot sudah ditempah");
+        setFoodLoading(false);
+        return;
+      }
+
       const { error } = await supabase.from('food_donations').insert({
         date: foodForm.date,
         slot: foodForm.slot,
@@ -214,12 +242,16 @@ export default function Donations() {
   };
 
   const generateDates = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const dates = [];
-    const today = new Date();
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      dates.push(d.toISOString().split('T')[0]);
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
     }
     return dates;
   };
@@ -234,6 +266,15 @@ export default function Donations() {
 
   const isDateFullyTaken = (dateStr) => {
     return ['breakfast', 'lunch', 'dinner'].every(slot => isSlotTaken(dateStr, slot) || isSlotPending(dateStr, slot));
+  };
+
+  const isPastDate = (dateStr) => {
+    // using local time string YYYY-MM-DD
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return dateStr < `${yyyy}-${mm}-${dd}`;
   };
 
   return (
@@ -263,7 +304,7 @@ export default function Donations() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === 'food' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
           >
             <Utensils size={18} />
-            Tajaan Makanan
+            Jadual Sumbangan Makanan
           </button>
           <button 
             onClick={() => setActiveTab('asset')}
@@ -412,10 +453,29 @@ export default function Donations() {
       {activeTab === 'food' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="glass-card rounded-3xl p-8">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-              <CalendarIcon className="text-emerald-500" />
-              Pilih Tarikh Tajaan
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <CalendarIcon className="text-emerald-500" />
+                Pilih Tarikh
+              </h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                >
+                  &larr;
+                </button>
+                <span className="font-bold py-2 min-w-[100px] text-center">
+                  {currentMonth.toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                >
+                  &rarr;
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
               {generateDates().map(dateStr => {
                 const dateObj = new Date(dateStr);
@@ -423,14 +483,16 @@ export default function Donations() {
                 const dateNum = dateObj.getDate();
                 const month = dateObj.toLocaleDateString('ms-MY', { month: 'short' });
                 const fullyTaken = isDateFullyTaken(dateStr);
+                const pastDate = isPastDate(dateStr);
                 const isSelected = foodForm.date === dateStr;
 
                 return (
                   <button
                     key={dateStr}
-                    onClick={() => !fullyTaken && setFoodForm({...foodForm, date: dateStr, slot: ''})}
-                    disabled={fullyTaken}
+                    onClick={() => !fullyTaken && !pastDate && setFoodForm({...foodForm, date: dateStr, slot: ''})}
+                    disabled={fullyTaken || pastDate}
                     className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 ${
+                      pastDate ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed dark:bg-slate-900/50 dark:border-slate-800 dark:text-slate-600' :
                       fullyTaken ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
                       isSelected ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md dark:bg-emerald-900/20 dark:text-emerald-400' :
                       'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:shadow-sm dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'
@@ -441,8 +503,8 @@ export default function Donations() {
                     <span className="text-xs">{month}</span>
                     <div className="flex gap-1 mt-2">
                       <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'breakfast') ? 'bg-red-500' : isSlotPending(dateStr, 'breakfast') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Sarapan" />
-                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'lunch') ? 'bg-red-500' : isSlotPending(dateStr, 'lunch') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Tengahari" />
-                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'dinner') ? 'bg-red-500' : isSlotPending(dateStr, 'dinner') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Malam" />
+                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'lunch') ? 'bg-red-500' : isSlotPending(dateStr, 'lunch') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Makan Tengah Hari" />
+                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'dinner') ? 'bg-red-500' : isSlotPending(dateStr, 'dinner') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Makan Malam" />
                     </div>
                   </button>
                 );
@@ -456,14 +518,14 @@ export default function Donations() {
           </div>
 
           <div className="glass-card rounded-3xl p-8 sticky top-28">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Maklumat Tajaan</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Maklumat Sumbangan</h2>
             {foodSuccess ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 size={32} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Alhamdulillah!</h3>
-                <p className="text-slate-600 dark:text-slate-400">Tempahan tarikh tajaan anda sedang diproses. Pihak masjid akan menghubungi anda sebentar lagi.</p>
+                <p className="text-slate-600 dark:text-slate-400">Tempahan tarikh sumbangan anda sedang diproses. Pihak masjid akan menghubungi anda sebentar lagi.</p>
               </div>
             ) : (
               <form onSubmit={handleFoodSubmit} className="space-y-5">
@@ -481,8 +543,8 @@ export default function Donations() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {[
                         { id: 'breakfast', label: 'Sarapan' },
-                        { id: 'lunch', label: 'Tengahari' },
-                        { id: 'dinner', label: 'Malam' }
+                        { id: 'lunch', label: 'Makan Tengah Hari' },
+                        { id: 'dinner', label: 'Makan Malam' }
                       ].map(s => {
                         const taken = isSlotTaken(foodForm.date, s.id);
                         const pending = isSlotPending(foodForm.date, s.id);

@@ -114,7 +114,7 @@ export default function DonationsManager() {
           <Landmark size={18} /> Wang Ringgit
         </button>
         <button onClick={() => setActiveTab('food')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'food' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
-          <Utensils size={18} /> Tajaan Makanan
+          <Utensils size={18} /> Jadual Sumbangan Makanan
         </button>
         <button onClick={() => setActiveTab('asset')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'asset' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
           <Box size={18} /> Wakaf Aset
@@ -189,7 +189,7 @@ export default function DonationsManager() {
                   <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="px-6 py-4">
                       <div className="font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY')}</div>
-                      <div className="text-xs text-slate-500 uppercase font-medium mt-0.5">{d.slot === 'breakfast' ? 'Sarapan' : d.slot === 'lunch' ? 'Tengahari' : d.slot === 'dinner' ? 'Malam' : d.slot}</div>
+                      <div className="text-xs text-slate-500 uppercase font-medium mt-0.5">{d.slot === 'breakfast' ? 'Sarapan' : d.slot === 'lunch' ? 'Makan Tengah Hari' : d.slot === 'dinner' ? 'Makan Malam' : d.slot}</div>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
                     <td className="px-6 py-4 text-slate-900 dark:text-slate-300">{d.food_type || '-'}</td>
@@ -248,7 +248,7 @@ export default function DonationsManager() {
       {editFood && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-xl font-bold mb-4 dark:text-white">Kemaskini Tajaan Makanan</h2>
+            <h2 className="text-xl font-bold mb-4 dark:text-white">Kemaskini Jadual Sumbangan Makanan</h2>
             <form onSubmit={handleFoodEditSave} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Tarikh Slot</label>
@@ -258,8 +258,8 @@ export default function DonationsManager() {
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Pilih Slot</label>
                 <select value={editFood.slot} onChange={e => setEditFood({...editFood, slot: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required>
                   <option value="breakfast">Sarapan</option>
-                  <option value="lunch">Tengahari</option>
-                  <option value="dinner">Malam</option>
+                  <option value="lunch">Makan Tengah Hari</option>
+                  <option value="dinner">Makan Malam</option>
                 </select>
               </div>
               <div>
