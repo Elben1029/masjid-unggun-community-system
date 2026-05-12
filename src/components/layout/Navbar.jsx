@@ -23,7 +23,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Utama', path: '/' },
-    { name: 'Program', path: '/events' },
+    { name: 'Acara', path: '/events' },
     { name: 'Sumbangan', path: '/donations' },
     { name: 'Korban', path: '/korban' },
     { name: 'Inventori', path: '/inventory' },
@@ -65,8 +65,8 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 to={link.path}
-                className={`text-sm font-medium transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
-                  location.pathname === link.path ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'
+                className={`text-sm font-semibold transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
+                  location.pathname === link.path ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'
                 }`}
               >
                 {link.name}
@@ -114,13 +114,13 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Nav */}
-      <div className={`md:hidden absolute top-full left-0 right-0 bg-white dark:bg-slate-900 shadow-lg border-t border-slate-100 dark:border-slate-800 transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-96 py-4' : 'max-h-0 py-0'}`}>
+      <div className={`md:hidden absolute top-full left-0 right-0 bg-white dark:bg-slate-900 shadow-lg border-t border-slate-100 dark:border-slate-800 transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-[85vh] overflow-y-auto py-4' : 'max-h-0 py-0'}`}>
         <div className="flex flex-col px-4 space-y-3">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               to={link.path}
-              className="block px-3 py-2 rounded-lg text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400"
+              className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400"
               onClick={() => setIsOpen(false)}
             >
               {link.name}
@@ -128,23 +128,22 @@ export default function Navbar() {
           ))}
           
           <div className="h-px w-full bg-slate-200 dark:bg-slate-800 my-2"></div>
-          
-          {userRole === 'admin' && (
-            <Link
-              to="/admin"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-lg text-base font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-            >
-              Admin Panel
-            </Link>
-          )}
 
           {currentUser ? (
             <>
+              {userRole === 'admin' && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  Dashboard
+                </Link>
+              )}
               <Link
                 to="/profile"
                 onClick={() => setIsOpen(false)}
-                className="block px-3 py-2 rounded-lg text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Profil
               </Link>
@@ -153,7 +152,7 @@ export default function Navbar() {
                   handleLogout();
                   setIsOpen(false);
                 }}
-                className="mt-2 w-full text-center bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-4 py-3 rounded-lg text-base font-medium"
+                className="mt-4 w-full text-center bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 px-4 py-3 rounded-xl text-base font-bold transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40"
               >
                 Log Keluar
               </button>
@@ -162,7 +161,7 @@ export default function Navbar() {
             <Link
               to="/login"
               onClick={() => setIsOpen(false)}
-              className="mt-2 w-full text-center bg-emerald-600 text-white px-4 py-3 rounded-lg text-base font-medium"
+              className="mt-4 w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl text-base font-bold shadow-md transition-colors"
             >
               Log Masuk / Daftar
             </Link>
