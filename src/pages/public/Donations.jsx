@@ -1,4 +1,4 @@
-import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle, Copy, X, Clock, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,16 +11,15 @@ export default function Donations() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
   // --- CASH DONATION STATE ---
-  const [selectedFund, setSelectedFund] = useState('');
   const [cashForm, setCashForm] = useState({
     donorName: '',
     amount: '',
-    paymentMethod: 'qr', // 'qr' or 'bank_transfer'
     reference: '',
   });
   const [cashFile, setCashFile] = useState(null);
   const [cashLoading, setCashLoading] = useState(false);
   const [cashSuccess, setCashSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // --- FOOD DONATION STATE ---
   const [foodDates, setFoodDates] = useState([]);
@@ -34,6 +33,7 @@ export default function Donations() {
   });
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodSuccess, setFoodSuccess] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null); // For Quick View Modal
 
   // --- ASSET WAQF STATE ---
   const [assets, setAssets] = useState([]);
@@ -44,36 +44,6 @@ export default function Donations() {
   });
   const [assetLoading, setAssetLoading] = useState(false);
   const [assetSuccess, setAssetSuccess] = useState(false);
-
-  const funds = [
-    {
-      id: 'f1',
-      title: 'Tabung Pengurusan Masjid',
-      icon: Landmark,
-      description: `Untuk bil utiliti, penyelenggaraan, dan pengurusan harian ${settings?.mosque_name || 'Masjid Unggun'}.`,
-      color: 'from-emerald-500 to-emerald-600',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
-      iconColor: 'text-emerald-600 dark:text-emerald-400'
-    },
-    {
-      id: 'f2',
-      title: 'Tabung Kebajikan Anak Yatim',
-      icon: Heart,
-      description: `Sumbangan khusus untuk anak-anak yatim dan asnaf di kariah ${settings?.mosque_name || 'Masjid Unggun'}.`,
-      color: 'from-rose-400 to-red-500',
-      iconBg: 'bg-rose-100 dark:bg-rose-900/50',
-      iconColor: 'text-rose-600 dark:text-rose-400'
-    },
-    {
-      id: 'f3',
-      title: 'Tabung Pembangunan',
-      icon: HandHeart,
-      description: 'Bagi tujuan pembesaran dan naik taraf fasiliti masjid pada masa akan datang.',
-      color: 'from-blue-500 to-indigo-600',
-      iconBg: 'bg-blue-100 dark:bg-blue-900/50',
-      iconColor: 'text-blue-600 dark:text-blue-400'
-    }
-  ];
 
   // FETCH DATA
   useEffect(() => {
@@ -93,7 +63,7 @@ export default function Donations() {
 
       const { data, error } = await supabase
         .from('food_donations')
-        .select('date, slot, status')
+        .select('id, date, slot, status, donor_name, food_type, contact_number, notes, created_at')
         .gte('date', startDate)
         .lte('date', endDate);
       if (!error && data) {
@@ -122,7 +92,6 @@ export default function Donations() {
   // HANDLERS
   const handleCashSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedFund) return alert("Sila pilih tabung terlebih dahulu.");
     if (!cashFile) return alert("Sila muat naik resit transaksi.");
     if (!cashForm.amount || Number(cashForm.amount) <= 0) {
       alert("Jumlah sumbangan tidak sah");
@@ -147,7 +116,7 @@ export default function Donations() {
         user_id: user?.id || null,
         donor_name: cashForm.donorName || 'Hamba Allah',
         amount: Number(cashForm.amount),
-        payment_method: cashForm.paymentMethod,
+        donation_type: 'Tabung Masjid',
         reference_number: cashForm.reference || null,
         receipt_url: urlData.publicUrl || null,
         status: 'pending'
@@ -159,7 +128,7 @@ export default function Donations() {
         return;
       }
       setCashSuccess(true);
-      setCashForm({ donorName: '', amount: '', paymentMethod: 'qr', reference: '' });
+      setCashForm({ donorName: '', amount: '', reference: '' });
       setCashFile(null);
       setTimeout(() => setCashSuccess(false), 5000);
     } catch (err) {
@@ -241,6 +210,13 @@ export default function Donations() {
     }
   };
 
+  const handleCopyAccount = () => {
+    const accountNo = settings?.account_number || '10052010123456';
+    navigator.clipboard.writeText(accountNo.replace(/\s+/g, ''));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const generateDates = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -256,12 +232,18 @@ export default function Donations() {
     return dates;
   };
 
+  const getSlotDetails = (dateStr, slot) => {
+    return foodDates.find(f => f.date === dateStr && f.slot === slot);
+  };
+
   const isSlotTaken = (dateStr, slot) => {
-    return foodDates.some(f => f.date === dateStr && f.slot === slot && (f.status === 'approved' || f.status === 'completed'));
+    const booking = getSlotDetails(dateStr, slot);
+    return booking && (booking.status === 'approved' || booking.status === 'completed');
   };
 
   const isSlotPending = (dateStr, slot) => {
-    return foodDates.some(f => f.date === dateStr && f.slot === slot && f.status === 'pending');
+    const booking = getSlotDetails(dateStr, slot);
+    return booking && booking.status === 'pending';
   };
 
   const isDateFullyTaken = (dateStr) => {
@@ -277,8 +259,44 @@ export default function Donations() {
     return dateStr < `${yyyy}-${mm}-${dd}`;
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
+      case 'completed': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
+      case 'pending':
+      default: return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'approved': return 'Diluluskan';
+      case 'completed': return 'Selesai';
+      case 'cancelled': return 'Dibatalkan';
+      case 'pending':
+      default: return 'Menunggu';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'approved': return <CheckCircle size={12} className="mr-1" />;
+      case 'completed': return <CheckCircle2 size={12} className="mr-1" />;
+      case 'cancelled': return <XCircle size={12} className="mr-1" />;
+      case 'pending':
+      default: return <Clock size={12} className="mr-1" />;
+    }
+  };
+
+  const slotLabels = {
+    'breakfast': 'Sarapan',
+    'lunch': 'Makan Tengah Hari',
+    'dinner': 'Makan Malam'
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
       <div className="mb-12 text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mb-6 shadow-sm">
           <Heart size={32} className="animate-pulse" />
@@ -320,62 +338,69 @@ export default function Donations() {
       {activeTab === 'cash' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="lg:col-span-7 space-y-6">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Pilih Tabung</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {funds.map((fund) => (
-                <div 
-                  key={fund.id}
-                  onClick={() => setSelectedFund(fund.id)}
-                  className={`cursor-pointer rounded-2xl border-2 transition-all duration-300 p-6 ${
-                    selectedFund === fund.id 
-                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 shadow-md transform -translate-y-1' 
-                      : 'border-transparent glass-card hover:border-emerald-200 dark:hover:border-emerald-800'
-                  }`}
-                >
-                  <div className={`w-12 h-12 rounded-xl ${fund.iconBg} flex items-center justify-center ${fund.iconColor} mb-4`}>
-                    <fund.icon size={24} />
-                  </div>
-                  <h3 className="font-bold text-slate-800 dark:text-white mb-2">{fund.title}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{fund.description}</p>
-                </div>
-              ))}
+            
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center">
+              <Landmark className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Tabung Masjid</h2>
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">Sumbangan anda akan disalurkan terus ke Tabung Masjid untuk pelbagai kegunaan dan kebajikan.</p>
             </div>
 
-            <div className="glass p-6 rounded-2xl mt-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-slate-800 dark:text-white">Maklumat Pembayaran</h3>
-                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setCashForm({...cashForm, paymentMethod: 'qr'}) }}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${cashForm.paymentMethod === 'qr' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                  >QR Pay</button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setCashForm({...cashForm, paymentMethod: 'bank_transfer'}) }}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${cashForm.paymentMethod === 'bank_transfer' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                  >Bank Transfer</button>
-                </div>
-              </div>
+            <div className="glass p-8 rounded-3xl mt-8 shadow-sm">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 border-b pb-4 border-slate-100 dark:border-slate-800">Maklumat Pembayaran</h3>
               
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{settings?.bank_name || 'Bank Islam Malaysia Berhad'}</p>
-                  <p className="font-mono text-xl font-bold text-slate-800 dark:text-white tracking-wider">{settings?.account_number || '1005 2010 1234 56'}</p>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">{settings?.account_name || 'Masjid Unggun Kota Kinabalu'}</p>
-                </div>
-                {cashForm.paymentMethod === 'qr' && (
-                  (settings?.qr_image_url || settings?.qr_code_url) ? (
-                    <img src={settings.qr_image_url || settings.qr_code_url} alt="DuitNow QR" className="w-24 h-24 rounded-lg bg-white p-2 shadow-sm object-contain" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* QR Section */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
+                  <h4 className="font-bold text-slate-800 dark:text-white mb-4">Bayar Menggunakan QR</h4>
+                  {(settings?.qr_image_url || settings?.qr_code_url) ? (
+                    <img src={settings.qr_image_url || settings.qr_code_url} alt="DuitNow QR" className="w-40 h-40 rounded-xl bg-white p-3 shadow-md object-contain mb-4" />
                   ) : (
-                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${settings?.account_number || '10052010123456'}`} alt="DuitNow QR" className="w-24 h-24 rounded-lg bg-white p-2 shadow-sm" />
-                  )
-                )}
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${settings?.account_number || '10052010123456'}`} alt="DuitNow QR" className="w-40 h-40 rounded-xl bg-white p-3 shadow-md mb-4" />
+                  )}
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Imbas kod QR menggunakan aplikasi bank atau e-wallet anda.
+                  </p>
+                </div>
+
+                {/* Bank Transfer Section */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col justify-center">
+                  <h4 className="font-bold text-slate-800 dark:text-white mb-4 text-center md:text-left">Pemindahan Bank</h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">Bank</p>
+                      <p className="font-bold text-slate-800 dark:text-white text-lg">{settings?.bank_name || 'Bank Islam Malaysia Berhad'}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">No Akaun</p>
+                      <div className="flex items-center gap-3">
+                        <p className="font-mono text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">
+                          {settings?.account_number || '1005 2010 1234 56'}
+                        </p>
+                        <button 
+                          onClick={handleCopyAccount}
+                          className="p-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300"
+                          title="Salin No Akaun"
+                        >
+                          {copied ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">Nama Akaun</p>
+                      <p className="font-medium text-slate-700 dark:text-slate-300">{settings?.account_name || 'Masjid Unggun Kota Kinabalu'}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="lg:col-span-5">
             <div className="glass-card rounded-3xl p-8 sticky top-28 border border-slate-200 dark:border-slate-800">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Maklumkan Sumbangan</h2>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Muat Naik Resit Pembayaran</h2>
               
               {cashSuccess ? (
                 <div className="text-center py-8">
@@ -426,22 +451,29 @@ export default function Donations() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Resit Transaksi</label>
-                    <input 
-                      type="file" 
-                      accept="image/*,.pdf"
-                      onChange={e => setCashFile(e.target.files[0])}
-                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                    />
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <div className="space-y-1 text-center">
+                        <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
+                        <div className="flex text-sm text-slate-600 dark:text-slate-400 justify-center">
+                          <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-emerald-500 dark:text-emerald-400">
+                            <span>Muat Naik Fail</span>
+                            <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*,.pdf" onChange={e => setCashFile(e.target.files[0])} />
+                          </label>
+                          <p className="pl-1">atau seret dan lepas</p>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">PNG, JPG, PDF sehingga 5MB</p>
+                        {cashFile && <p className="text-sm font-bold text-emerald-600 mt-2">{cashFile.name}</p>}
+                      </div>
+                    </div>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={!selectedFund || cashLoading}
-                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
+                    disabled={cashLoading}
+                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
                   >
                     {cashLoading ? 'Menghantar...' : 'Hantar Makluman'}
                   </button>
-                  {!selectedFund && <p className="text-xs text-center text-rose-500 mt-2">Sila pilih tabung terlebih dahulu.</p>}
                 </form>
               )}
             </div>
@@ -451,182 +483,207 @@ export default function Donations() {
 
       {/* FOOD DONATION TAB */}
       {activeTab === 'food' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="glass-card rounded-3xl p-8">
-            <div className="flex items-center justify-between mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="lg:col-span-8 glass-card rounded-3xl p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <CalendarIcon className="text-emerald-500" />
-                Pilih Tarikh
+                Jadual Sumbangan
               </h2>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl">
                 <button
                   onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                  className="p-2 rounded-lg bg-white shadow-sm hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                 >
                   &larr;
                 </button>
-                <span className="font-bold py-2 min-w-[100px] text-center">
+                <span className="font-bold py-1 min-w-[140px] text-center text-slate-800 dark:text-white">
                   {currentMonth.toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' })}
                 </span>
                 <button
                   onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                  className="p-2 rounded-lg bg-white shadow-sm hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                 >
                   &rarr;
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            
+            {/* Desktop Calendar Grid / Mobile Agenda */}
+            <div className="space-y-6">
               {generateDates().map(dateStr => {
                 const dateObj = new Date(dateStr);
-                const day = dateObj.toLocaleDateString('ms-MY', { weekday: 'short' });
+                const day = dateObj.toLocaleDateString('ms-MY', { weekday: 'long' });
                 const dateNum = dateObj.getDate();
-                const month = dateObj.toLocaleDateString('ms-MY', { month: 'short' });
-                const fullyTaken = isDateFullyTaken(dateStr);
                 const pastDate = isPastDate(dateStr);
                 const isSelected = foodForm.date === dateStr;
-
+                
+                const slots = ['breakfast', 'lunch', 'dinner'];
+                
                 return (
-                  <button
-                    key={dateStr}
-                    onClick={() => !fullyTaken && !pastDate && setFoodForm({...foodForm, date: dateStr, slot: ''})}
-                    disabled={fullyTaken || pastDate}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 ${
-                      pastDate ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed dark:bg-slate-900/50 dark:border-slate-800 dark:text-slate-600' :
-                      fullyTaken ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
-                      isSelected ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md dark:bg-emerald-900/20 dark:text-emerald-400' :
-                      'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:shadow-sm dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className="text-xs uppercase font-bold opacity-70">{day}</span>
-                    <span className="text-xl font-black my-1">{dateNum}</span>
-                    <span className="text-xs">{month}</span>
-                    <div className="flex gap-1 mt-2">
-                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'breakfast') ? 'bg-red-500' : isSlotPending(dateStr, 'breakfast') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Sarapan" />
-                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'lunch') ? 'bg-red-500' : isSlotPending(dateStr, 'lunch') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Makan Tengah Hari" />
-                      <span className={`w-2 h-2 rounded-full ${isSlotTaken(dateStr, 'dinner') ? 'bg-red-500' : isSlotPending(dateStr, 'dinner') ? 'bg-amber-500' : 'bg-emerald-500'}`} title="Makan Malam" />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex gap-4 mt-6 text-sm text-slate-500 justify-center">
-              <span className="flex items-center gap-1"><div className="w-3 h-3 bg-white border border-slate-300 rounded-full"></div> Kosong</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 bg-amber-100 border border-amber-300 rounded-full"></div> Menunggu Pengesahan</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-200 border border-slate-300 rounded-full"></div> Telah Ditempah</span>
-            </div>
-          </div>
-
-          <div className="glass-card rounded-3xl p-8 sticky top-28">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Maklumat Sumbangan</h2>
-            {foodSuccess ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Alhamdulillah!</h3>
-                <p className="text-slate-600 dark:text-slate-400">Tempahan tarikh sumbangan anda sedang diproses. Pihak masjid akan menghubungi anda sebentar lagi.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleFoodSubmit} className="space-y-5">
-                {foodForm.date ? (
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800">
-                    <div className="flex items-center gap-3 mb-4">
-                      <CalendarIcon size={24} />
-                      <div>
-                        <p className="text-xs opacity-80 uppercase font-bold">Tarikh Dipilih</p>
-                        <p className="font-bold text-lg">{new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+                  <div key={dateStr} className={`border-l-4 pl-4 py-2 ${pastDate ? 'border-slate-200 dark:border-slate-800 opacity-60' : isSelected ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-r-xl' : 'border-slate-300 dark:border-slate-700'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-slate-800 dark:text-white">{dateNum}</span>
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{day}</span>
                       </div>
+                      {!pastDate && (
+                        <button 
+                          onClick={() => setFoodForm({...foodForm, date: dateStr, slot: ''})}
+                          className={`text-sm px-4 py-1.5 rounded-full font-medium transition-colors ${isSelected ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                        >
+                          {isSelected ? 'Dipilih' : 'Pilih Tarikh'}
+                        </button>
+                      )}
                     </div>
                     
-                    <p className="text-sm font-bold mb-2">Pilih Slot Masa:</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {[
-                        { id: 'breakfast', label: 'Sarapan' },
-                        { id: 'lunch', label: 'Makan Tengah Hari' },
-                        { id: 'dinner', label: 'Makan Malam' }
-                      ].map(s => {
-                        const taken = isSlotTaken(foodForm.date, s.id);
-                        const pending = isSlotPending(foodForm.date, s.id);
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {slots.map(slotId => {
+                        const booking = getSlotDetails(dateStr, slotId);
+                        
+                        if (booking) {
+                          return (
+                            <div 
+                              key={slotId}
+                              onClick={() => setSelectedBooking(booking)}
+                              className={`p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all ${getStatusColor(booking.status)}`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold uppercase opacity-80">{slotLabels[slotId]}</span>
+                                <span className="flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/50 dark:bg-black/20">
+                                  {getStatusIcon(booking.status)}
+                                  {getStatusLabel(booking.status)}
+                                </span>
+                              </div>
+                              <p className="font-bold text-sm truncate">{booking.donor_name}</p>
+                              <p className="text-xs opacity-90 truncate mt-1">{booking.food_type}</p>
+                            </div>
+                          );
+                        }
+                        
+                        // Available slot
                         return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            disabled={taken || pending}
-                            onClick={() => setFoodForm({...foodForm, slot: s.id})}
-                            className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
-                              taken || pending ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700' :
-                              foodForm.slot === s.id ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' :
-                              'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:bg-slate-900 dark:border-emerald-800 dark:text-emerald-400'
+                          <div 
+                            key={slotId}
+                            onClick={() => !pastDate && setFoodForm({...foodForm, date: dateStr, slot: slotId})}
+                            className={`p-3 rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[80px] ${
+                              pastDate 
+                                ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-500' 
+                                : foodForm.date === dateStr && foodForm.slot === slotId
+                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm dark:bg-emerald-900/30 dark:text-emerald-300 cursor-pointer'
+                                  : 'bg-white border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer dark:bg-slate-900 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
                             }`}
                           >
-                            {s.label}
-                            {(taken || pending) && <span className="block text-[10px] mt-0.5">{taken ? 'Penuh' : 'Pending'}</span>}
-                          </button>
+                            <span className="text-xs font-bold uppercase mb-1">{slotLabels[slotId]}</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full dark:bg-emerald-900/50 dark:text-emerald-300">Kosong</span>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
-                ) : (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-4 rounded-xl mb-4 flex items-start gap-3">
-                    <AlertCircle size={20} className="shrink-0 mt-0.5" />
-                    <p className="text-sm">Sila pilih tarikh kosong daripada kalendar di sebelah sebelum mengisi borang.</p>
+                );
+              })}
+            </div>
+            
+            <div className="flex flex-wrap gap-4 mt-8 text-sm text-slate-500 dark:text-slate-400 justify-center border-t border-slate-100 dark:border-slate-800 pt-6">
+              <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border-2 border-dashed border-emerald-300 rounded-sm"></div> Kosong</span>
+              <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div> Menunggu Pengesahan</span>
+              <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded-sm"></div> Diluluskan</span>
+              <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div> Selesai</span>
+            </div>
+          </div>
+
+          <div className="lg:col-span-4">
+            <div className="glass-card rounded-3xl p-6 sticky top-28">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Borang Tempahan</h2>
+              {foodSuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={32} />
                   </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Penaja / Hamba Allah</label>
-                  <input
-                    type="text"
-                    required
-                    value={foodForm.donorName}
-                    onChange={e => setFoodForm({...foodForm, donorName: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
-                  />
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Alhamdulillah!</h3>
+                  <p className="text-slate-600 dark:text-slate-400">Tempahan tarikh sumbangan anda sedang diproses. Pihak masjid akan menghubungi anda sebentar lagi.</p>
                 </div>
+              ) : (
+                <form onSubmit={handleFoodSubmit} className="space-y-4">
+                  {foodForm.date ? (
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800">
+                      <div className="flex items-center gap-3 mb-4">
+                        <CalendarIcon size={24} />
+                        <div>
+                          <p className="text-[10px] opacity-80 uppercase font-bold tracking-wider">Tarikh & Slot Dipilih</p>
+                          <p className="font-bold text-sm">
+                            {new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'})}
+                            {foodForm.slot && ` - ${slotLabels[foodForm.slot]}`}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {!foodForm.slot && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Sila klik pada slot kosong (Sarapan / Tengah Hari / Malam) di kalendar.</p>}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 p-4 rounded-xl mb-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700">
+                      <Info size={20} className="shrink-0 mt-0.5 text-slate-400" />
+                      <p className="text-sm">Sila pilih tarikh dan slot kosong daripada jadual di sebelah sebelum mengisi borang.</p>
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jenis Makanan (Cth: Nasi Lemak 50 Pax)</label>
-                  <input
-                    type="text"
-                    required
-                    value={foodForm.foodType}
-                    onChange={e => setFoodForm({...foodForm, foodType: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Telefon Untuk Dihubungi</label>
-                  <input
-                    type="tel"
-                    required
-                    value={foodForm.contactNumber}
-                    onChange={e => setFoodForm({...foodForm, contactNumber: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Penaja / Kumpulan</label>
+                    <input
+                      type="text"
+                      required
+                      value={foodForm.donorName}
+                      onChange={e => setFoodForm({...foodForm, donorName: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
+                      placeholder="Cth: Keluarga Hj Ahmad"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nota Tambahan (Pilihan)</label>
-                  <textarea
-                    rows="3"
-                    value={foodForm.notes}
-                    onChange={e => setFoodForm({...foodForm, notes: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
-                    placeholder="Cth: Kari Ayam dan Nasi Putih untuk 100 orang"
-                  ></textarea>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jenis Makanan & Kuantiti</label>
+                    <input
+                      type="text"
+                      required
+                      value={foodForm.foodType}
+                      onChange={e => setFoodForm({...foodForm, foodType: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
+                      placeholder="Cth: Nasi Ayam (50 Pax)"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Telefon</label>
+                    <input
+                      type="tel"
+                      required
+                      value={foodForm.contactNumber}
+                      onChange={e => setFoodForm({...foodForm, contactNumber: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white"
+                    />
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={!foodForm.date || !foodForm.slot || foodLoading}
-                  className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
-                >
-                  {foodLoading ? 'Menghantar...' : 'Sahkan Tempahan'}
-                </button>
-              </form>
-            )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nota (Pilihan)</label>
+                    <textarea
+                      rows="2"
+                      value={foodForm.notes}
+                      onChange={e => setFoodForm({...foodForm, notes: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white text-sm"
+                      placeholder="Sebarang maklumat tambahan"
+                    ></textarea>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!foodForm.date || !foodForm.slot || foodLoading}
+                    className="w-full py-3.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
+                  >
+                    {foodLoading ? 'Menghantar...' : 'Sahkan Tempahan'}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -746,6 +803,67 @@ export default function Donations() {
           </div>
         </div>
       )}
+
+      {/* QUICK VIEW MODAL FOR FOOD DONATIONS */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedBooking(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className={`p-6 border-b ${getStatusColor(selectedBooking.status).replace('bg-', 'bg-').replace('border-', 'border-').replace('text-', 'text-')}`}>
+              <div className="flex justify-between items-start mb-4">
+                <span className="px-3 py-1 bg-white/80 dark:bg-black/20 rounded-full text-sm font-bold flex items-center">
+                  {getStatusIcon(selectedBooking.status)}
+                  {getStatusLabel(selectedBooking.status)}
+                </span>
+                <button onClick={() => setSelectedBooking(null)} className="p-1 rounded-full hover:bg-black/10 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <h3 className="text-2xl font-bold">{slotLabels[selectedBooking.slot]}</h3>
+              <p className="opacity-90 font-medium mt-1">
+                {new Date(selectedBooking.date).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">Disumbang Oleh</p>
+                <p className="font-medium text-slate-800 dark:text-white text-lg">{selectedBooking.donor_name}</p>
+                {selectedBooking.contact_number && (
+                  <p className="text-sm text-slate-600 dark:text-slate-300">{selectedBooking.contact_number}</p>
+                )}
+              </div>
+              
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">Jenis Makanan</p>
+                <p className="font-bold text-slate-800 dark:text-white">{selectedBooking.food_type}</p>
+              </div>
+              
+              {selectedBooking.notes && (
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">Nota Tambahan</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl italic">
+                    "{selectedBooking.notes}"
+                  </p>
+                </div>
+              )}
+
+              <div className="text-xs text-center text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
+                Dihantar pada {new Date(selectedBooking.created_at).toLocaleString('ms-MY')}
+              </div>
+            </div>
+            
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 text-center">
+              <button 
+                onClick={() => setSelectedBooking(null)}
+                className="px-6 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-lg font-medium transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

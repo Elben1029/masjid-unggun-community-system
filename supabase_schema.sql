@@ -55,6 +55,20 @@ BEGIN
     END IF; 
 END $$;
 
+-- 4. Migrate Cash Donations table
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cash_donations' AND column_name='payment_method') THEN 
+        ALTER TABLE public.cash_donations ADD COLUMN payment_method TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cash_donations' AND column_name='reference_number') THEN 
+        ALTER TABLE public.cash_donations ADD COLUMN reference_number TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cash_donations' AND column_name='receipt_url') THEN 
+        ALTER TABLE public.cash_donations ADD COLUMN receipt_url TEXT;
+    END IF;
+END $$;
+
 -- ==========================================
 -- SCHEMA DEFINITIONS
 -- ==========================================
