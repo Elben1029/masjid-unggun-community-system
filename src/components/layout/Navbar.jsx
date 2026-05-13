@@ -52,9 +52,9 @@ export default function Navbar() {
                 <span className="text-white font-bold text-xl">M</span>
               )}
             </div>
-            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900'}`}>
               {settings?.mosque_name || (
-                <>Masjid <span className={scrolled ? 'text-emerald-400' : 'text-emerald-700 dark:text-emerald-400'}>Unggun</span></>
+                <>Masjid <span className={scrolled ? 'text-emerald-400' : 'text-emerald-700'}>Unggun</span></>
               )}
             </span>
           </Link>
@@ -67,10 +67,10 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`text-base font-bold transition-colors duration-300 ${
+                  className={`text-base font-bold transition-all duration-300 ${
                     isActive 
-                      ? scrolled ? 'text-emerald-400' : 'text-emerald-800 dark:text-emerald-400' 
-                      : scrolled ? 'text-slate-200 hover:text-white' : 'text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300'
+                      ? scrolled ? 'text-emerald-400 border-b-2 border-emerald-400 pb-0.5' : 'text-emerald-700 border-b-2 border-emerald-700 pb-0.5' 
+                      : scrolled ? 'text-slate-200 hover:text-white' : 'text-slate-900 hover:text-emerald-700'
                   }`}
                 >
                   {link.name}
@@ -91,7 +91,7 @@ export default function Navbar() {
               
               {currentUser ? (
                 <>
-                  <Link to="/profile" className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all text-sm font-bold ${scrolled ? 'text-slate-200 hover:bg-slate-800 hover:text-white' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  <Link to="/profile" className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all text-sm font-bold ${scrolled ? 'text-slate-200 hover:bg-slate-800 hover:text-white' : 'text-slate-900 hover:bg-slate-100'}`}>
                     <User size={16} />
                     <span>Profil</span>
                   </Link>
@@ -101,7 +101,7 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <Link to="/login" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-800 dark:border-white hover:scale-105'}`}>
+                <Link to="/login" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500' : 'bg-slate-900 text-white border-slate-800 hover:scale-105'}`}>
                   <User size={16} />
                   <span>Log Masuk</span>
                 </Link>
@@ -109,7 +109,7 @@ export default function Navbar() {
             </div>
 
             <button
-              className={`md:hidden p-2 transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}
+              className={`md:hidden p-2 transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900'}`}
               onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle Menu"
             >
