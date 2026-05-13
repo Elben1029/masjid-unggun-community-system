@@ -24,11 +24,11 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Utama', path: '/' },
+    { name: 'Tentang Kami', path: '/about' },
     { name: 'Acara', path: '/events' },
+    { name: 'Inventori', path: '/inventory' },
     { name: 'Sumbangan', path: '/donations' },
     { name: 'Korban', path: '/korban' },
-    { name: 'Inventori', path: '/inventory' },
-    { name: 'Tentang Kami', path: '/about' },
   ];
 
   async function handleLogout() {
