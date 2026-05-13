@@ -46,14 +46,6 @@ export default function Donations() {
   const [assetSuccess, setAssetSuccess] = useState(false);
 
   // FETCH DATA
-  useEffect(() => {
-    fetchFoodDates();
-  }, [currentMonth]);
-
-  useEffect(() => {
-    fetchAssets();
-  }, []);
-
   const fetchFoodDates = async () => {
     try {
       const year = currentMonth.getFullYear();
@@ -88,6 +80,14 @@ export default function Donations() {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    fetchFoodDates();
+  }, [currentMonth]);
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
 
   // HANDLERS
   const handleCashSubmit = async (e) => {

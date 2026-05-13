@@ -1,4 +1,4 @@
-import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Heart, Landmark, HandHeart, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -76,14 +76,6 @@ export default function Donations() {
   ];
 
   // FETCH DATA
-  useEffect(() => {
-    fetchFoodDates();
-  }, [currentMonth]);
-
-  useEffect(() => {
-    fetchAssets();
-  }, []);
-
   const fetchFoodDates = async () => {
     try {
       const year = currentMonth.getFullYear();
@@ -118,6 +110,14 @@ export default function Donations() {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    fetchFoodDates();
+  }, [currentMonth]);
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
 
   // HANDLERS
   const handleCashSubmit = async (e) => {

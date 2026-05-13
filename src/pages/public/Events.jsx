@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, Users, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Users, Image as ImageIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';

@@ -52,9 +52,9 @@ export default function Navbar() {
                 <span className="text-white font-bold text-xl">M</span>
               )}
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">
+            <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
               {settings?.mosque_name || (
-                <>Masjid <span className="text-emerald-600 dark:text-emerald-400">Unggun</span></>
+                <>Masjid <span className="text-emerald-700 dark:text-emerald-400">Unggun</span></>
               )}
             </span>
           </Link>
@@ -65,8 +65,8 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 to={link.path}
-                className={`text-sm font-semibold transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
-                  location.pathname === link.path ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'
+                className={`text-base font-bold transition-colors hover:text-emerald-700 dark:hover:text-emerald-300 ${
+                  location.pathname === link.path ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
                 {link.name}
@@ -78,7 +78,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-3">
               {userRole === 'admin' && (
-                <Link to="/admin" className="flex items-center gap-2 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-4 py-2 rounded-full text-sm font-medium hover:bg-rose-200 dark:hover:bg-rose-900/50 transition-all">
+                <Link to="/admin" className="flex items-center gap-2 bg-emerald-700 dark:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:bg-emerald-800 dark:hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all border border-emerald-600 dark:border-emerald-500">
                   <ShieldAlert size={16} />
                   <span>Admin Panel</span>
                 </Link>
@@ -86,17 +86,17 @@ export default function Navbar() {
               
               {currentUser ? (
                 <>
-                  <Link to="/profile" className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-medium">
+                  <Link to="/profile" className="flex items-center gap-2 text-slate-800 dark:text-slate-100 px-3 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold">
                     <User size={16} />
                     <span>Profil</span>
                   </Link>
-                  <button onClick={handleLogout} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                  <button onClick={handleLogout} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2 rounded-full text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 transition-all border border-slate-200 dark:border-slate-700">
                     <LogOut size={16} />
                     <span>Log Keluar</span>
                   </button>
                 </>
               ) : (
-                <Link to="/login" className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full text-sm font-medium hover:scale-105 transition-transform duration-200 shadow-md">
+                <Link to="/login" className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform duration-200 shadow-md border border-slate-800 dark:border-white">
                   <User size={16} />
                   <span>Log Masuk</span>
                 </Link>
@@ -120,7 +120,7 @@ export default function Navbar() {
             <Link
               key={link.name}
               to={link.path}
-              className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400"
+              className="block px-3 py-2 rounded-lg text-base font-bold text-slate-900 dark:text-slate-100 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-300"
               onClick={() => setIsOpen(false)}
             >
               {link.name}
@@ -135,7 +135,7 @@ export default function Navbar() {
                 <Link
                   to="/admin"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="block px-3 py-2 rounded-lg text-base font-bold text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   Dashboard
                 </Link>
@@ -143,7 +143,7 @@ export default function Navbar() {
               <Link
                 to="/profile"
                 onClick={() => setIsOpen(false)}
-                className="block px-3 py-2 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="block px-3 py-2 rounded-lg text-base font-bold text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Profil
               </Link>

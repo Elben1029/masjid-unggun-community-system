@@ -1,4 +1,4 @@
-import { Box, Search, Filter } from 'lucide-react';
+import { Box } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
