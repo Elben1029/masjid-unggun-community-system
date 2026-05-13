@@ -82,7 +82,6 @@ export default function DonationsManager() {
     e.preventDefault();
     await supabase.from('food_donations').update({
       date: editFood.date,
-      slot: editFood.slot,
       donor_name: editFood.donor_name,
       food_type: editFood.food_type,
       contact_number: editFood.contact_number,
@@ -119,6 +118,43 @@ export default function DonationsManager() {
         <button onClick={() => setActiveTab('asset')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'asset' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
           <Box size={18} /> Wakaf Aset
         </button>
+      </div>
+
+      {/* Stats Summary Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl">
+              <Landmark size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Jumlah Sumbangan (Bulan Ini)</p>
+              <h3 className="text-xl font-bold dark:text-white">RM {cashDonations.filter(d => d.status === 'approved' && new Date(d.created_at).getMonth() === new Date().getMonth()).reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
+              <Utensils size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Tajaan Makanan Mendatang</p>
+              <h3 className="text-xl font-bold dark:text-white">{foodDonations.filter(d => new Date(d.date) >= new Date()).length} Slot</h3>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
+              <Box size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Wakaf Aset Belum Selesai</p>
+              <h3 className="text-xl font-bold dark:text-white">{assetDonations.filter(d => d.status === 'pending').length} Permohonan</h3>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -158,11 +194,10 @@ export default function DonationsManager() {
                     </td>
                     <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
                     <td className="px-6 py-4 text-right">
-                      {d.receipt_url && <a href={d.receipt_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 mr-2"><Eye size={18} className="inline"/></a>}
                       {d.status === 'pending' && (
                         <>
-                          <button onClick={() => handleCashStatus(d.id, 'approved')} className="text-emerald-600 mr-2"><CheckCircle size={18} className="inline"/></button>
-                          <button onClick={() => handleCashStatus(d.id, 'rejected')} className="text-red-600"><XCircle size={18} className="inline"/></button>
+                          <button onClick={() => handleCashStatus(d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors mr-2" title="Sahkan"><CheckCircle size={18} /></button>
+                          <button onClick={() => handleCashStatus(d.id, 'rejected')} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Tolak"><XCircle size={18} /></button>
                         </>
                       )}
                     </td>
@@ -176,10 +211,10 @@ export default function DonationsManager() {
             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300">
                 <tr>
-                  <th className="px-6 py-4">Tarikh & Slot</th>
+                  <th className="px-6 py-4">Tarikh Tajaan</th>
                   <th className="px-6 py-4">Penaja</th>
-                  <th className="px-6 py-4">Jenis Makanan</th>
-                  <th className="px-6 py-4">Nota / Telefon</th>
+                  <th className="px-6 py-4">Menu / Nota</th>
+                  <th className="px-6 py-4">Hubungi</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Tindakan</th>
                 </tr>
@@ -188,20 +223,19 @@ export default function DonationsManager() {
                 {foodDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(d => (
                   <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY')}</div>
-                      <div className="text-xs text-slate-500 uppercase font-medium mt-0.5">{d.slot === 'breakfast' ? 'Sarapan' : d.slot === 'lunch' ? 'Makan Tengah Hari' : d.slot === 'dinner' ? 'Makan Malam' : d.slot}</div>
+                      <div className="font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</div>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-6 py-4 text-slate-900 dark:text-slate-300">{d.food_type || '-'}</td>
                     <td className="px-6 py-4">
-                      <div className="text-xs">{d.contact_number}</div>
-                      <div className="text-xs text-slate-500">{d.notes}</div>
+                      <div className="text-slate-900 dark:text-slate-200 font-medium">{d.food_type || '-'}</div>
+                      <div className="text-xs text-slate-500 italic">{d.notes}</div>
                     </td>
+                    <td className="px-6 py-4 font-mono text-xs">{d.contact_number}</td>
                     <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
-                    <td className="px-6 py-4 text-right">
-                      {d.status === 'pending' && <button onClick={() => handleFoodStatus(d.id, 'approved')} className="text-emerald-600 mr-2" title="Sahkan"><CheckCircle size={18} className="inline"/></button>}
-                      <button onClick={() => setEditFood(d)} className="text-blue-600 mr-2" title="Kemaskini"><Edit2 size={18} className="inline"/></button>
-                      <button onClick={() => handleFoodDelete(d.id)} className="text-red-600" title="Padam"><Trash2 size={18} className="inline"/></button>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      {d.status === 'pending' && <button onClick={() => handleFoodStatus(d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors mr-1.5" title="Sahkan"><CheckCircle size={18} /></button>}
+                      <button onClick={() => setEditFood(d)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors mr-1.5" title="Kemaskini"><Edit2 size={18} /></button>
+                      <button onClick={() => handleFoodDelete(d.id)} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Padam"><Trash2 size={18} /></button>
                     </td>
                   </tr>
                 ))}
@@ -251,16 +285,8 @@ export default function DonationsManager() {
             <h2 className="text-xl font-bold mb-4 dark:text-white">Kemaskini Jadual Sumbangan Makanan</h2>
             <form onSubmit={handleFoodEditSave} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Tarikh Slot</label>
+                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Tarikh Penajaan</label>
                 <input type="date" value={editFood.date} onChange={e => setEditFood({...editFood, date: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Pilih Slot</label>
-                <select value={editFood.slot} onChange={e => setEditFood({...editFood, slot: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required>
-                  <option value="breakfast">Sarapan</option>
-                  <option value="lunch">Makan Tengah Hari</option>
-                  <option value="dinner">Makan Malam</option>
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nama Penaja</label>

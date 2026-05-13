@@ -25,7 +25,6 @@ export default function Donations() {
   const [foodDates, setFoodDates] = useState([]);
   const [foodForm, setFoodForm] = useState({
     date: '',
-    slot: '',
     donorName: '',
     foodType: '',
     contactNumber: '',
@@ -55,7 +54,7 @@ export default function Donations() {
 
       const { data, error } = await supabase
         .from('food_donations')
-        .select('id, date, slot, status, donor_name, food_type, contact_number, notes, created_at')
+        .select('id, date, status, donor_name, food_type, contact_number, notes, created_at')
         .gte('date', startDate)
         .lte('date', endDate);
       if (!error && data) {
@@ -92,48 +91,29 @@ export default function Donations() {
   // HANDLERS
   const handleCashSubmit = async (e) => {
     e.preventDefault();
-    if (!cashFile) return alert("Sila muat naik resit transaksi.");
     if (!cashForm.amount || Number(cashForm.amount) <= 0) {
-      alert("Jumlah sumbangan tidak sah");
+      alert("Sila masukkan jumlah sumbangan yang sah.");
       return;
     }
     
     setCashLoading(true);
     try {
-      const fileExt = cashFile.name.split('.').pop();
-      const fileName = `receipt-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, cashFile);
-      
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(fileName);
-
       const { error } = await supabase.from('cash_donations').insert({
         user_id: user?.id || null,
         donor_name: cashForm.donorName || 'Hamba Allah',
         amount: Number(cashForm.amount),
-        donation_type: 'Tabung Masjid',
-        reference_number: cashForm.reference || null,
-        receipt_url: urlData.publicUrl || null,
+        purpose: 'Tabung Masjid',
         status: 'pending'
       });
 
-      if (error) {
-        console.error("Cash donation insert error:", error);
-        alert(error.message);
-        return;
-      }
+      if (error) throw error;
+      
       setCashSuccess(true);
       setCashForm({ donorName: '', amount: '', reference: '' });
-      setCashFile(null);
       setTimeout(() => setCashSuccess(false), 5000);
     } catch (err) {
       console.error(err);
-      alert("Gagal menghantar sumbangan. Sila cuba lagi.");
+      alert("Gagal memproses maklumat sumbangan. Sila cuba lagi.");
     } finally {
       setCashLoading(false);
     }
@@ -142,7 +122,6 @@ export default function Donations() {
   const handleFoodSubmit = async (e) => {
     e.preventDefault();
     if (!foodForm.date) return alert("Sila pilih tarikh.");
-    if (!foodForm.slot) return alert("Sila pilih slot.");
 
     setFoodLoading(true);
     try {
@@ -150,18 +129,16 @@ export default function Donations() {
         .from("food_donations")
         .select("id")
         .eq("date", foodForm.date)
-        .eq("slot", foodForm.slot)
         .maybeSingle();
 
       if (existingBooking) {
-        alert("Slot sudah ditempah");
+        alert("Tarikh ini sudah pun ditaja. Sila pilih tarikh lain.");
         setFoodLoading(false);
         return;
       }
 
       const { error } = await supabase.from('food_donations').insert({
         date: foodForm.date,
-        slot: foodForm.slot,
         donor_name: foodForm.donorName || 'Hamba Allah',
         food_type: foodForm.foodType,
         user_id: user?.id || null,
@@ -173,7 +150,7 @@ export default function Donations() {
       if (error) throw error;
       setFoodSuccess(true);
       fetchFoodDates();
-      setFoodForm({ date: '', slot: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
+      setFoodForm({ date: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
       setTimeout(() => setFoodSuccess(false), 5000);
     } catch (err) {
       console.error(err);
@@ -241,8 +218,8 @@ export default function Donations() {
     return grid;
   };
 
-  const getSlotDetails = (dateStr, slot) => {
-    return foodDates.find(f => f.date === dateStr && f.slot === slot);
+  const getDayDetails = (dateStr) => {
+    return foodDates.find(f => f.date === dateStr);
   };
 
   const isPastDate = (dateStr) => {
@@ -400,7 +377,7 @@ export default function Donations() {
 
           <div className="lg:col-span-5">
             <div className="glass-card rounded-3xl p-6 sm:p-8 sticky top-28 border border-slate-200 dark:border-slate-800">
-              <h2 className="text-xl font-bold mb-6">Muat Naik Resit Pembayaran</h2>
+              <h2 className="text-xl font-bold mb-6">Makluman Sumbangan</h2>
               
               {cashSuccess ? (
                 <div className="text-center py-8">
@@ -408,10 +385,17 @@ export default function Donations() {
                     <CheckCircle2 size={32} />
                   </div>
                   <h3 className="text-xl font-bold mb-2">Alhamdulillah!</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Maklumat sumbangan anda telah diterima dan sedang menunggu pengesahan admin.</p>
+                  <p className="text-slate-600 dark:text-slate-400">Maklumat sumbangan anda telah diterima. Terima kasih atas keprihatinan anda.</p>
                 </div>
               ) : (
                 <form onSubmit={handleCashSubmit} className="space-y-4 sm:space-y-5">
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800 flex items-start gap-3">
+                    <Info size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                      Sila masukkan maklumat sumbangan selepas anda membuat transaksi melalui QR atau perbankan internet untuk rujukan kami.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Penyumbang (Pilihan)</label>
                     <input
@@ -423,48 +407,18 @@ export default function Donations() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah (RM)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        required
-                        value={cashForm.amount}
-                        onChange={e => setCashForm({...cashForm, amount: e.target.value})}
-                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500"
-                        placeholder="50.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Rujukan (Pilihan)</label>
-                      <input
-                        type="text"
-                        value={cashForm.reference}
-                        onChange={e => setCashForm({...cashForm, reference: e.target.value})}
-                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500"
-                        placeholder="Cth: REF1234"
-                      />
-                    </div>
-                  </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Resit Transaksi</label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                      <div className="space-y-1 text-center">
-                        <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
-                        <div className="flex flex-col sm:flex-row text-sm text-slate-600 dark:text-slate-400 justify-center items-center gap-1">
-                          <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-emerald-500 dark:text-emerald-400">
-                            <span>Muat Naik Fail</span>
-                            <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*,.pdf" onChange={e => setCashFile(e.target.files[0])} />
-                          </label>
-                          <p>atau seret dan lepas</p>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">PNG, JPG, PDF sehingga 5MB</p>
-                        {cashFile && <p className="text-sm font-bold text-emerald-600 mt-2">{cashFile.name}</p>}
-                      </div>
-                    </div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Sumbangan (RM)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      required
+                      value={cashForm.amount}
+                      onChange={e => setCashForm({...cashForm, amount: e.target.value})}
+                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold text-emerald-600"
+                      placeholder="0.00"
+                    />
                   </div>
 
                   <button
@@ -472,7 +426,7 @@ export default function Donations() {
                     disabled={cashLoading}
                     className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
                   >
-                    {cashLoading ? 'Menghantar...' : 'Hantar Makluman'}
+                    {cashLoading ? 'Memproses...' : 'Sahkan Sumbangan'}
                   </button>
                 </form>
               )}
@@ -526,50 +480,56 @@ export default function Donations() {
               <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {generateCalendarGrid().map((dateStr, index) => {
                   if (!dateStr) {
-                    return <div key={`empty-${index}`} className="min-h-[60px] sm:min-h-[100px] rounded-xl bg-slate-50/50 dark:bg-slate-800/20"></div>;
+                    return <div key={`empty-${index}`} className="min-h-[70px] sm:min-h-[110px] rounded-xl bg-slate-50/50 dark:bg-slate-800/10"></div>;
                   }
                   
                   const dateObj = new Date(dateStr);
                   const dateNum = dateObj.getDate();
                   const past = isPastDate(dateStr);
-                  const isToday = dateStr === new Date().toLocaleDateString('en-CA'); // local standard ISO
+                  const isToday = dateStr === new Date().toLocaleDateString('en-CA');
                   const isSelected = foodForm.date === dateStr;
                   
-                  // Get bookings for this date
-                  const slots = ['breakfast', 'lunch', 'dinner'];
-                  const bookings = slots.map(slot => getSlotDetails(dateStr, slot)).filter(Boolean);
-                  
-                  // Simple availability indicators
-                  const totalSlots = 3;
-                  const bookedCount = bookings.length;
-                  const isFullyBooked = bookedCount === totalSlots;
+                  // Get booking for this date
+                  const booking = getDayDetails(dateStr);
+                  const isSponsored = !!booking;
                   
                   return (
                     <button 
                       key={dateStr} 
-                      onClick={() => setSelectedDateModal(dateStr)}
-                      className={`relative min-h-[60px] sm:min-h-[100px] p-1 sm:p-2 flex flex-col items-center sm:items-start rounded-xl border transition-all duration-200 ${
+                      onClick={() => {
+                        if (!past) {
+                          setFoodForm({...foodForm, date: dateStr});
+                        }
+                      }}
+                      className={`relative min-h-[70px] sm:min-h-[110px] p-2 flex flex-col items-center sm:items-start rounded-xl border transition-all duration-300 ${
                         past 
-                          ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-500' 
+                          ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-600' 
                           : isSelected
-                            ? 'border-emerald-500 bg-emerald-50 shadow-sm dark:border-emerald-500 dark:bg-emerald-900/20'
-                            : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-700'
+                            ? 'border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-900/20'
+                            : isSponsored
+                              ? 'border-amber-200 bg-amber-50/50 hover:shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20'
+                              : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-700'
                       }`}
                     >
-                      <span className={`text-xs sm:text-sm font-bold w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full mb-1 sm:mb-2 ${
+                      <span className={`text-xs sm:text-sm font-bold w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full mb-1 sm:mb-2 ${
                         isToday ? 'bg-emerald-600 text-white' : ''
                       }`}>
                         {dateNum}
                       </span>
                       
-                      {/* Indicators for desktop/mobile */}
                       {!past && (
-                        <div className="w-full flex flex-col items-center sm:items-start gap-1">
-                          {bookings.map((booking, i) => (
-                            <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${getStatusColorIndicator(booking.status)}`} title={getStatusLabel(booking.status)}></div>
-                          ))}
-                          {bookedCount < totalSlots && (
-                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-200 dark:bg-slate-600" title="Available"></div>
+                        <div className="w-full flex flex-col gap-1 items-center sm:items-start">
+                          {isSponsored ? (
+                            <>
+                              <div className="hidden sm:block text-[10px] font-bold text-amber-700 dark:text-amber-400 leading-tight">Ditaja Oleh:</div>
+                              <div className="hidden sm:block text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate w-full">{booking.donor_name}</div>
+                              <div className="sm:hidden w-2 h-2 rounded-full bg-amber-500"></div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="hidden sm:block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Kosong</div>
+                              <div className="sm:hidden w-2 h-2 rounded-full bg-emerald-400"></div>
+                            </>
                           )}
                         </div>
                       )}
@@ -580,10 +540,9 @@ export default function Donations() {
             </div>
             
             <div className="flex flex-wrap gap-4 mt-8 text-xs sm:text-sm text-slate-500 dark:text-slate-400 justify-center border-t border-slate-100 dark:border-slate-800 pt-6">
-              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-600"></div> Kosong</span>
-              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Menunggu</span>
-              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Diluluskan</span>
-              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-600"></div> Selesai</span>
+              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700"></div> Tersedia (Available)</span>
+              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> Telah Ditaja (Sponsored)</span>
+              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-600"></div> Hari Ini</span>
             </div>
           </div>
 
@@ -602,7 +561,7 @@ export default function Donations() {
                 <form onSubmit={handleFoodSubmit} className="space-y-4">
                   {foodForm.date ? (
                     <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3">
                         <CalendarIcon size={20} />
                         <div>
                           <p className="text-[10px] opacity-80 uppercase font-bold tracking-wider">Tarikh Dipilih</p>
@@ -611,22 +570,11 @@ export default function Donations() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Clock size={20} />
-                        <div>
-                          <p className="text-[10px] opacity-80 uppercase font-bold tracking-wider">Slot Dipilih</p>
-                          <p className="font-bold text-sm">
-                            {foodForm.slot ? slotLabels[foodForm.slot] : 'Belum Dipilih'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {!foodForm.slot && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-3">Sila klik pada tarikh di kalendar untuk memilih slot yang kosong.</p>}
                     </div>
                   ) : (
                     <div className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 p-4 rounded-xl mb-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700">
                       <Info size={20} className="shrink-0 mt-0.5 text-slate-400" />
-                      <p className="text-sm">Sila klik pada mana-mana tarikh di kalendar untuk melihat dan memilih slot kosong.</p>
+                      <p className="text-sm">Sila klik pada tarikh tersedia di kalendar untuk menaja hidangan komuniti.</p>
                     </div>
                   )}
 
@@ -643,14 +591,13 @@ export default function Donations() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jenis Makanan & Kuantiti</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Menu Makanan (Pilihan)</label>
                     <input
                       type="text"
-                      required
                       value={foodForm.foodType}
                       onChange={e => setFoodForm({...foodForm, foodType: e.target.value})}
                       className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="Cth: Nasi Ayam (50 Pax)"
+                      placeholder="Cth: Nasi Lemak / Mee Goreng"
                     />
                   </div>
                   
@@ -666,22 +613,22 @@ export default function Donations() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nota (Pilihan)</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hajat / Doa / Nota (Pilihan)</label>
                     <textarea
-                      rows="2"
+                      rows="3"
                       value={foodForm.notes}
                       onChange={e => setFoodForm({...foodForm, notes: e.target.value})}
                       className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="Sebarang maklumat tambahan"
+                      placeholder="Masukkan doa atau nota khas untuk penajaan ini"
                     ></textarea>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={!foodForm.date || !foodForm.slot || foodLoading}
-                    className="w-full py-3.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
+                    disabled={!foodForm.date || foodLoading}
+                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
                   >
-                    {foodLoading ? 'Menghantar...' : 'Sahkan Tempahan'}
+                    {foodLoading ? 'Menghantar...' : 'Sahkan Penajaan'}
                   </button>
                 </form>
               )}
@@ -720,16 +667,25 @@ export default function Donations() {
                         </div>
                       )}
                       <div className="p-5 flex-1 flex flex-col">
-                        <h3 className="font-bold mb-1 line-clamp-1">{asset.item}</h3>
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-bold line-clamp-1 flex-1">{asset.item}</h3>
+                          {percent >= 100 ? (
+                            <span className="ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] font-bold rounded-full whitespace-nowrap">Selesai</span>
+                          ) : percent > 50 ? (
+                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-bold rounded-full whitespace-nowrap">Hampir Selesai</span>
+                          ) : (
+                            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold rounded-full whitespace-nowrap">Diperlukan</span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 flex-1">Kategori: {asset.category}</p>
                         
                         <div className="mt-auto">
-                          <div className="flex justify-between text-xs font-bold mb-1">
+                          <div className="flex justify-between text-xs font-bold mb-1.5">
                             <span className="text-emerald-600 dark:text-emerald-400">{asset.received_quantity || 0} Unit</span>
-                            <span className="text-slate-500">Target: {asset.needed_quantity || 0}</span>
+                            <span className="text-slate-500">{percent}% (Sasaran: {asset.needed_quantity || 0})</span>
                           </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                            <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                            <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
                           </div>
                         </div>
                       </div>

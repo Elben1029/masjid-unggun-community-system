@@ -178,11 +178,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Food Donations (Calendar slots)
+-- -- Food Donations (One sponsorship per date)
 CREATE TABLE IF NOT EXISTS public.food_donations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     date DATE NOT NULL,
-    slot TEXT NOT NULL DEFAULT 'lunch', -- breakfast, lunch, dinner
     donor_name TEXT,
     user_id UUID REFERENCES public.profiles(id),
     status TEXT DEFAULT 'pending', -- available, pending, approved, completed, cancelled
@@ -191,7 +190,21 @@ CREATE TABLE IF NOT EXISTS public.food_donations (
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(date, slot)
+    UNIQUE(date)
+);
+
+-- Monetary Donations (Simplified)
+CREATE TABLE IF NOT EXISTS public.cash_donations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.profiles(id),
+    donor_name TEXT,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method TEXT, -- QR, bank_transfer
+    purpose TEXT, -- Mosque, Charity, etc.
+    notes TEXT,
+    status TEXT DEFAULT 'pending', -- pending, approved
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Deprecated asset_waqf table (kept for backward compatibility during transition)
@@ -442,6 +455,14 @@ ALTER TABLE public.cash_donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.korban_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 
+-- Grant permissions to authenticated and anon roles
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT, INSERT ON public.event_registrations TO authenticated, anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+
+
 -- Profiles Policies
 DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
@@ -460,14 +481,19 @@ CREATE POLICY "Anyone can view events" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (public.is_admin());
 
 -- Event Registrations Policies
-DROP POLICY IF EXISTS "Anyone can view own event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Users can view own event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Anyone can view own event registrations" ON public.event_registrations; -- Legacy name
 DROP POLICY IF EXISTS "Anyone can create event registrations" ON public.event_registrations;
 DROP POLICY IF EXISTS "Users can update own event registrations" ON public.event_registrations;
-DROP POLICY IF EXISTS "Admins can manage event registrations" ON public.event_registrations;
-CREATE POLICY "Anyone can view own event registrations" ON public.event_registrations FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Admins can manage all event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Admins can manage event registrations" ON public.event_registrations; -- Legacy name
+
+CREATE POLICY "Users can view own event registrations" ON public.event_registrations FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 CREATE POLICY "Anyone can create event registrations" ON public.event_registrations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own event registrations" ON public.event_registrations FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Admins can manage event registrations" ON public.event_registrations FOR ALL USING (public.is_admin());
+CREATE POLICY "Users can update own event registrations" ON public.event_registrations FOR UPDATE USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Users can delete own event registrations" ON public.event_registrations FOR DELETE USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Admins can manage all event registrations" ON public.event_registrations FOR ALL USING (public.is_admin());
 
 -- Inventory Policies
 DROP POLICY IF EXISTS "Anyone can view inventory" ON public.inventory;
