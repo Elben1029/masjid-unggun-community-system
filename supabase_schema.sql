@@ -255,14 +255,16 @@ CREATE TABLE IF NOT EXISTS public.inventory (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     item TEXT NOT NULL,
     category TEXT,
-    quantity INTEGER DEFAULT 1,
-    item_condition TEXT DEFAULT 'Baik',
+    quantity INTEGER DEFAULT 0,
+    item_condition TEXT DEFAULT 'Baik', -- Baik, Sederhana, Perlu Dibaiki, Rosak
     image_url TEXT,
     is_needed BOOLEAN DEFAULT false,
+    waqf_enabled BOOLEAN DEFAULT false,
+    urgency_level TEXT DEFAULT 'Normal', -- Normal, Needed, Urgent, Replacement Required
     needed_quantity INTEGER DEFAULT 0,
     received_quantity INTEGER DEFAULT 0,
     minimum_required INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'active',
+    status TEXT DEFAULT 'Available', -- Available, Low Stock, Needs Replacement, Under Maintenance, Needed for Donation
     location TEXT,
     purchase_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),

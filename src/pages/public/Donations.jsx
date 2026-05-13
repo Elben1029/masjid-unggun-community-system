@@ -1,18 +1,20 @@
 import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle, Copy, X, Clock, CheckCircle, Info, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
 export default function Donations() {
   const { settings } = useSettings();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('cash'); // 'cash', 'food', 'asset'
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
   // --- CASH DONATION STATE ---
   const [cashForm, setCashForm] = useState({
-    donorName: '',
+    donorName: profile?.full_name || '',
     amount: '',
     reference: '',
   });
@@ -87,6 +89,21 @@ export default function Donations() {
   useEffect(() => {
     fetchAssets();
   }, []);
+
+  useEffect(() => {
+    // Handle pre-filled state from Inventory page
+    if (location.state?.selectedTab) {
+      setActiveTab(location.state.selectedTab);
+    }
+    
+    if (location.state?.inventoryId && assets.length > 0) {
+      const asset = assets.find(a => a.id === location.state.inventoryId);
+      if (asset) setSelectedAsset(asset);
+    } else if (location.state?.prefilledItem && assets.length > 0) {
+      const asset = assets.find(a => a.item === location.state.prefilledItem);
+      if (asset) setSelectedAsset(asset);
+    }
+  }, [location.state, assets]);
 
   // HANDLERS
   const handleCashSubmit = async (e) => {

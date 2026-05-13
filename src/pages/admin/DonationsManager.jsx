@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Landmark, Utensils, Box, Edit2, Trash2 } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Landmark, Utensils, Box, Edit2, Trash2, Calendar as CalendarIcon, CheckCircle2, MoreVertical } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function DonationsManager() {
@@ -7,6 +7,7 @@ export default function DonationsManager() {
   const [cashDonations, setCashDonations] = useState([]);
   const [foodDonations, setFoodDonations] = useState([]);
   const [assetDonations, setAssetDonations] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +23,8 @@ export default function DonationsManager() {
     await Promise.all([
       fetchCashDonations(),
       fetchFoodDonations(),
-      fetchAssetDonations()
+      fetchAssetDonations(),
+      fetchInventory()
     ]);
     setLoading(false);
   }
@@ -51,25 +53,22 @@ export default function DonationsManager() {
     if (!error) setAssetDonations(data || []);
   }
 
-  // Cash Donation Actions
-  const handleCashStatus = async (id, status) => {
-    if (!window.confirm(`Sahkan pertukaran status kepada ${status}?`)) return;
-    await supabase.from('cash_donations').update({ status }).eq('id', id);
-    fetchCashDonations();
-  };
+  async function fetchInventory() {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*');
+    if (!error) setInventory(data || []);
+  }
 
-  // Asset Waqf Actions
-  const handleAssetStatus = async (id, status) => {
+  // Common status update handler
+  const handleUpdateStatus = async (table, id, status) => {
     if (!window.confirm(`Sahkan pertukaran status kepada ${status}?`)) return;
-    await supabase.from('asset_waqf_donations').update({ status }).eq('id', id);
-    fetchAssetDonations();
-  };
-
-  // Food Donation Actions
-  const handleFoodStatus = async (id, status) => {
-    if (!window.confirm(`Sahkan pertukaran status kepada ${status}?`)) return;
-    await supabase.from('food_donations').update({ status }).eq('id', id);
-    fetchFoodDonations();
+    const { error } = await supabase.from(table).update({ status }).eq('id', id);
+    if (error) {
+      alert("Gagal mengemaskini status.");
+    } else {
+      fetchData();
+    }
   };
 
   const handleFoodDelete = async (id) => {
@@ -94,77 +93,102 @@ export default function DonationsManager() {
   const getStatusBadge = (status) => {
     const s = status?.toLowerCase() || '';
     if (s === 'approved' || s === 'completed' || s === 'verified') 
-      return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full">Disahkan</span>;
+      return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase rounded-full">Selesai</span>;
     if (s === 'pending') 
-      return <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">Menunggu</span>;
-    if (s === 'cancelled' || s === 'rejected') 
-      return <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Batal/Ditolak</span>;
-    return <span className="px-2 py-1 bg-slate-100 text-slate-800 text-xs rounded-full">{status}</span>;
+      return <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase rounded-full">Baru</span>;
+    if (s === 'rejected' || s === 'cancelled') 
+      return <span className="px-3 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded-full">Batal</span>;
+    return <span className="px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold uppercase rounded-full">{status}</span>;
   };
 
+  // Calculate stats
+  const stats = {
+    totalCash: cashDonations
+      .filter(d => d.status === 'approved' && new Date(d.created_at).getMonth() === new Date().getMonth())
+      .reduce((acc, curr) => acc + Number(curr.amount), 0),
+    foodSponsorships: foodDonations.filter(d => new Date(d.date) >= new Date()).length,
+    pendingWaqf: assetDonations.filter(d => d.status === 'pending').length
+  };
+
+  const statsCards = [
+    { 
+      title: 'Kutipan Tunai (Bulan Ini)', 
+      value: `RM ${stats.totalCash.toLocaleString()}`, 
+      icon: <Landmark className="text-emerald-600" />,
+      color: 'bg-emerald-50 dark:bg-emerald-900/20'
+    },
+    { 
+      title: 'Tajaan Makanan Mendatang', 
+      value: `${stats.foodSponsorships} Slot`, 
+      icon: <Utensils className="text-blue-600" />,
+      color: 'bg-blue-50 dark:bg-blue-900/20'
+    },
+    { 
+      title: 'Permohonan Wakaf Baru', 
+      value: `${stats.pendingWaqf} Menunggu`, 
+      icon: <Box className="text-amber-600" />,
+      color: 'bg-amber-50 dark:bg-amber-900/20'
+    }
+  ];
+
+  const filteredCash = cashDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredFood = foodDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredAsset = assetDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase()));
+
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Pengurusan Sumbangan & Wakaf</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+        <div>
+          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Pengurusan Sumbangan</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Pantau dan urus semua jenis sumbangan dari komuniti.</p>
+        </div>
       </div>
 
-      <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-        <button onClick={() => setActiveTab('cash')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'cash' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
-          <Landmark size={18} /> Wang Ringgit
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        {statsCards.map((card, idx) => (
+          <div key={idx} className={`${card.color} p-8 rounded-[32px] border border-white/10 shadow-sm flex items-center gap-6 group hover:scale-[1.02] transition-all`}>
+            <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:rotate-6 transition-transform">
+              {card.icon}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{card.title}</p>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">{card.value}</h3>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl inline-flex gap-1 mb-8 shadow-inner">
+        <button 
+          onClick={() => setActiveTab('cash')} 
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all ${activeTab === 'cash' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+        >
+          <Landmark size={18} /> Tunai
         </button>
-        <button onClick={() => setActiveTab('food')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'food' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
-          <Utensils size={18} /> Jadual Sumbangan Makanan
+        <button 
+          onClick={() => setActiveTab('food')} 
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all ${activeTab === 'food' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+        >
+          <Utensils size={18} /> Makanan
         </button>
-        <button onClick={() => setActiveTab('asset')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'asset' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300'}`}>
+        <button 
+          onClick={() => setActiveTab('asset')} 
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all ${activeTab === 'asset' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+        >
           <Box size={18} /> Wakaf Aset
         </button>
       </div>
 
-      {/* Stats Summary Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl">
-              <Landmark size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Jumlah Sumbangan (Bulan Ini)</p>
-              <h3 className="text-xl font-bold dark:text-white">RM {cashDonations.filter(d => d.status === 'approved' && new Date(d.created_at).getMonth() === new Date().getMonth()).reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
-              <Utensils size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Tajaan Makanan Mendatang</p>
-              <h3 className="text-xl font-bold dark:text-white">{foodDonations.filter(d => new Date(d.date) >= new Date()).length} Slot</h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
-              <Box size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Wakaf Aset Belum Selesai</p>
-              <h3 className="text-xl font-bold dark:text-white">{assetDonations.filter(d => d.status === 'pending').length} Permohonan</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+      <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden min-h-[500px]">
+        {/* Search Header */}
+        <div className="p-6 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
           <div className="relative max-w-md">
-            <Search className="absolute inset-y-0 left-3 top-2.5 text-slate-400" size={18} />
+            <Search className="absolute inset-y-0 left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
               placeholder="Cari nama penyumbang..."
-              className="w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm focus:ring-emerald-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -173,32 +197,34 @@ export default function DonationsManager() {
 
         <div className="overflow-x-auto">
           {activeTab === 'cash' && (
-            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-4">Tarikh</th>
-                  <th className="px-6 py-4">Penyumbang</th>
-                  <th className="px-6 py-4">Jumlah/Kaedah</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Tindakan</th>
+                  <th className="px-8 py-5">Tarikh</th>
+                  <th className="px-8 py-5">Penyumbang</th>
+                  <th className="px-8 py-5">Jumlah/Kaedah</th>
+                  <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5 text-right">Tindakan</th>
                 </tr>
               </thead>
-              <tbody>
-                {cashDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(d => (
-                  <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
-                    <td className="px-6 py-4">{new Date(d.created_at).toLocaleDateString('ms-MY')}</td>
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-emerald-600 font-bold">RM {d.amount}</div>
-                      <div className="text-xs text-slate-500 uppercase">{d.payment_method}</div>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                {filteredCash.length === 0 ? (
+                  <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-400">Tiada sumbangan tunai dijumpai.</td></tr>
+                ) : filteredCash.map(d => (
+                  <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-8 py-5 text-slate-400 text-xs font-medium">{new Date(d.created_at).toLocaleDateString('ms-MY')}</td>
+                    <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{d.donor_name}</td>
+                    <td className="px-8 py-5">
+                      <div className="text-emerald-600 font-black">RM {d.amount.toLocaleString()}</div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{d.payment_method}</div>
                     </td>
-                    <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-8 py-5">{getStatusBadge(d.status)}</td>
+                    <td className="px-8 py-5 text-right">
                       {d.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleCashStatus(d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors mr-2" title="Sahkan"><CheckCircle size={18} /></button>
-                          <button onClick={() => handleCashStatus(d.id, 'rejected')} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Tolak"><XCircle size={18} /></button>
-                        </>
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => handleUpdateStatus('cash_donations', d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Sahkan"><CheckCircle2 size={18} /></button>
+                          <button onClick={() => handleUpdateStatus('cash_donations', d.id, 'rejected')} className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Tolak"><XCircle size={18} /></button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -208,34 +234,41 @@ export default function DonationsManager() {
           )}
 
           {activeTab === 'food' && (
-            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-4">Tarikh Tajaan</th>
-                  <th className="px-6 py-4">Penaja</th>
-                  <th className="px-6 py-4">Menu / Nota</th>
-                  <th className="px-6 py-4">Hubungi</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Tindakan</th>
+                  <th className="px-8 py-5">Tarikh Tajaan</th>
+                  <th className="px-8 py-5">Penaja</th>
+                  <th className="px-8 py-5">Menu / Nota</th>
+                  <th className="px-8 py-5">Hubungi</th>
+                  <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5 text-right">Tindakan</th>
                 </tr>
               </thead>
-              <tbody>
-                {foodDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(d => (
-                  <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-emerald-600">{new Date(d.date).toLocaleDateString('ms-MY', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</div>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                {filteredFood.length === 0 ? (
+                  <tr><td colSpan="6" className="px-8 py-20 text-center text-slate-400">Tiada tajaan makanan dijumpai.</td></tr>
+                ) : filteredFood.map(d => (
+                  <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2 text-emerald-600 font-black">
+                        <CalendarIcon size={14} />
+                        {new Date(d.date).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-slate-900 dark:text-slate-200 font-medium">{d.food_type || '-'}</div>
-                      <div className="text-xs text-slate-500 italic">{d.notes}</div>
+                    <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{d.donor_name}</td>
+                    <td className="px-8 py-5 max-w-xs">
+                      <div className="text-slate-900 dark:text-slate-200 font-bold truncate">{d.food_type || 'Menu Am'}</div>
+                      <div className="text-[11px] text-slate-400 italic line-clamp-1">{d.notes}</div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-xs">{d.contact_number}</td>
-                    <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      {d.status === 'pending' && <button onClick={() => handleFoodStatus(d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors mr-1.5" title="Sahkan"><CheckCircle size={18} /></button>}
-                      <button onClick={() => setEditFood(d)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors mr-1.5" title="Kemaskini"><Edit2 size={18} /></button>
-                      <button onClick={() => handleFoodDelete(d.id)} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Padam"><Trash2 size={18} /></button>
+                    <td className="px-8 py-5 text-slate-500 font-mono text-xs">{d.contact_number}</td>
+                    <td className="px-8 py-5">{getStatusBadge(d.status)}</td>
+                    <td className="px-8 py-5 text-right whitespace-nowrap">
+                      <div className="flex justify-end gap-1.5">
+                        {d.status === 'pending' && <button onClick={() => handleUpdateStatus('food_donations', d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Sahkan"><CheckCircle2 size={18} /></button>}
+                        <button onClick={() => setEditFood(d)} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Kemaskini"><Edit2 size={18} /></button>
+                        <button onClick={() => handleFoodDelete(d.id)} className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Padam"><Trash2 size={18} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -244,35 +277,53 @@ export default function DonationsManager() {
           )}
 
           {activeTab === 'asset' && (
-            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-4">Tarikh</th>
-                  <th className="px-6 py-4">Pewakaf</th>
-                  <th className="px-6 py-4">Aset Diwakafkan</th>
-                  <th className="px-6 py-4">Kuantiti</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Tindakan</th>
+                  <th className="px-8 py-5">Tarikh</th>
+                  <th className="px-8 py-5">Pewakaf</th>
+                  <th className="px-8 py-5">Aset Diwakafkan</th>
+                  <th className="px-8 py-5">Kuantiti</th>
+                  <th className="px-8 py-5">Progress Item</th>
+                  <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5 text-right">Tindakan</th>
                 </tr>
               </thead>
-              <tbody>
-                {assetDonations.filter(d => d.donor_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(d => (
-                  <tr key={d.id} className="border-b border-slate-100 dark:border-slate-800/50">
-                    <td className="px-6 py-4">{new Date(d.created_at).toLocaleDateString('ms-MY')}</td>
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-6 py-4">{d.inventory?.item || 'Aset Tidak Diketahui'}</td>
-                    <td className="px-6 py-4 font-bold text-emerald-600">{d.quantity} Unit</td>
-                    <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
-                    <td className="px-6 py-4 text-right">
-                      {d.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleAssetStatus(d.id, 'approved')} className="text-emerald-600 mr-2"><CheckCircle size={18} className="inline"/></button>
-                          <button onClick={() => handleAssetStatus(d.id, 'rejected')} className="text-red-600"><XCircle size={18} className="inline"/></button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                {filteredAsset.length === 0 ? (
+                  <tr><td colSpan="7" className="px-8 py-20 text-center text-slate-400">Tiada rekod wakaf aset dijumpai.</td></tr>
+                ) : filteredAsset.map(d => {
+                  const item = inventory.find(i => i.id === d.inventory_id);
+                  const progress = item ? Math.min(100, Math.round((item.received_quantity / item.needed_quantity) * 100)) : 0;
+                  return (
+                    <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-8 py-5 text-slate-400 text-xs font-medium">{new Date(d.created_at).toLocaleDateString('ms-MY')}</td>
+                      <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{d.donor_name}</td>
+                      <td className="px-8 py-5 font-bold text-emerald-600">{item?.item || 'Aset Masjid'}</td>
+                      <td className="px-8 py-5 font-black text-slate-900 dark:text-white">{d.quantity} Unit</td>
+                      <td className="px-8 py-5">
+                        <div className="w-32">
+                          <div className="flex justify-between text-[10px] mb-1 font-bold">
+                            <span className="text-emerald-600">{item?.received_quantity}/{item?.needed_quantity}</span>
+                            <span className="text-slate-400">{progress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden shadow-inner">
+                            <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">{getStatusBadge(d.status)}</td>
+                      <td className="px-8 py-5 text-right">
+                        {d.status === 'pending' && (
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => handleUpdateStatus('asset_waqf_donations', d.id, 'approved')} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Terima"><CheckCircle2 size={18} /></button>
+                            <button onClick={() => handleUpdateStatus('asset_waqf_donations', d.id, 'rejected')} className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Tolak"><XCircle size={18} /></button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -280,33 +331,42 @@ export default function DonationsManager() {
       </div>
 
       {editFood && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-xl font-bold mb-4 dark:text-white">Kemaskini Jadual Sumbangan Makanan</h2>
-            <form onSubmit={handleFoodEditSave} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Tarikh Penajaan</label>
-                <input type="date" value={editFood.date} onChange={e => setEditFood({...editFood, date: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold dark:text-white tracking-tight">Kemaskini Penajaan Makanan</h2>
+              <button onClick={() => setEditFood(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleFoodEditSave} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Tarikh Penajaan</label>
+                  <input type="date" value={editFood.date} onChange={e => setEditFood({...editFood, date: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all" required />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Nama Penaja / Kumpulan</label>
+                  <input type="text" value={editFood.donor_name} onChange={e => setEditFood({...editFood, donor_name: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Menu Makanan</label>
+                  <input type="text" value={editFood.food_type || ''} onChange={e => setEditFood({...editFood, food_type: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Cth: Nasi Lemak" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">No. Telefon</label>
+                  <input type="text" value={editFood.contact_number} onChange={e => setEditFood({...editFood, contact_number: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all" required />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Nota / Hajat</label>
+                  <textarea value={editFood.notes || ''} onChange={e => setEditFood({...editFood, notes: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none" placeholder="Masukkan nota tambahan..."></textarea>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nama Penaja</label>
-                <input type="text" value={editFood.donor_name} onChange={e => setEditFood({...editFood, donor_name: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Jenis Makanan</label>
-                <input type="text" value={editFood.food_type || ''} onChange={e => setEditFood({...editFood, food_type: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">No. Telefon</label>
-                <input type="text" value={editFood.contact_number} onChange={e => setEditFood({...editFood, contact_number: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nota</label>
-                <textarea value={editFood.notes || ''} onChange={e => setEditFood({...editFood, notes: e.target.value})} className="w-full p-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 dark:text-white"></textarea>
-              </div>
-              <div className="flex justify-end gap-2 mt-6">
-                <button type="button" onClick={() => setEditFood(null)} className="px-4 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Batal</button>
-                <button type="submit" className="px-4 py-2 text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Simpan</button>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setEditFood(null)} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-all">Batal</button>
+                <button type="submit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95">Simpan Perubahan</button>
               </div>
             </form>
           </div>
