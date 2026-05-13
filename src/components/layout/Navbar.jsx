@@ -7,6 +7,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 export default function Navbar() {
   const { settings } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,24 +83,66 @@ export default function Navbar() {
           {/* User & Mobile Toggle */}
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-3">
-              {userRole === 'admin' && (
-                <Link to="/admin" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-all border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700' : 'bg-emerald-700 dark:bg-emerald-600 text-white hover:bg-emerald-800 dark:hover:bg-emerald-700 border-emerald-600 dark:border-emerald-500'}`}>
-                  <ShieldAlert size={16} />
-                  <span>Admin Panel</span>
-                </Link>
-              )}
-              
               {currentUser ? (
-                <>
-                  <Link to="/profile" className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all text-sm font-bold ${scrolled ? 'text-slate-200 hover:bg-slate-800 hover:text-white' : 'text-slate-900 hover:bg-slate-100'}`}>
-                    <User size={16} />
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold border shadow-sm ${
+                      scrolled 
+                        ? 'bg-slate-800/80 text-white border-slate-700 hover:bg-slate-700' 
+                        : 'bg-white text-slate-900 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs uppercase">
+                      {currentUser.email ? currentUser.email[0] : 'U'}
+                    </div>
                     <span>Profil</span>
-                  </Link>
-                  <button onClick={handleLogout} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all border ${scrolled ? 'bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                    <LogOut size={16} />
-                    <span>Log Keluar</span>
                   </button>
-                </>
+                  
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-fadeIn">
+                      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                        <p className="text-xs font-semibold text-slate-400">Log masuk sebagai</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+                          {currentUser.email || 'Pengguna'}
+                        </p>
+                      </div>
+                      
+                      <Link 
+                        to="/profile" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                      >
+                        <User size={16} />
+                        <span>Lihat & Edit Profil</span>
+                      </Link>
+                      
+                      {userRole === 'admin' && (
+                        <Link 
+                          to="/admin" 
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <ShieldAlert size={16} />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+                      
+                      <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                      
+                      <button 
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-left"
+                      >
+                        <LogOut size={16} />
+                        <span>Log Keluar</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Link to="/login" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500' : 'bg-slate-900 text-white border-slate-800 hover:scale-105'}`}>
                   <User size={16} />

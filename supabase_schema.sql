@@ -95,6 +95,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     phone TEXT,
+    full_name TEXT,
+    username TEXT UNIQUE,
+    phone_number TEXT,
+    password_hash TEXT,
+    status TEXT DEFAULT 'active',
     role TEXT DEFAULT 'guest',
     role_version INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -272,8 +277,16 @@ BEGIN
         assigned_role := 'public';
     END IF;
 
-    INSERT INTO public.profiles (id, email, phone, role)
-    VALUES (new.id, new.email, new.phone, assigned_role);
+    INSERT INTO public.profiles (id, email, phone, phone_number, full_name, username, role)
+    VALUES (
+        new.id, 
+        new.email, 
+        coalesce(new.phone, new.raw_user_meta_data->>'phone'), 
+        coalesce(new.phone, new.raw_user_meta_data->>'phone'),
+        new.raw_user_meta_data->>'full_name',
+        new.raw_user_meta_data->>'username',
+        assigned_role
+    );
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -298,7 +311,10 @@ ALTER TABLE public.korban_registrations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);

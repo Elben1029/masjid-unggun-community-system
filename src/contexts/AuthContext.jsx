@@ -9,6 +9,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [roleVersion, setRoleVersion] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +46,7 @@ export function AuthProvider({ children }) {
       console.log("🔍 Fetching profile for user UID:", userId);
       const { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', userId)
         .single();
       
@@ -53,12 +54,14 @@ export function AuthProvider({ children }) {
         if (error.code === 'PGRST116') {
           console.log("ℹ️ No profile found in 'profiles' table, defaulting to 'public'");
           setUserRole('public');
+          setCurrentUserProfile(null);
           return 'public';
         }
         console.error("❌ Profile fetch error:", error);
         throw error;
       }
       
+      setCurrentUserProfile(data);
       // Normalize role: trim and lowercase to avoid comparison issues
       const rawRole = data?.role || 'public';
       const normalizedRole = String(rawRole).trim().toLowerCase();
@@ -71,13 +74,29 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("⚠️ Fallback to 'public' role:", error);
       setUserRole('public');
+      setCurrentUserProfile(null);
       return 'public';
     }
   }
 
-  function login(email, password) {
+  async function login(identifier, password) {
+    let emailToUse = identifier;
+    if (identifier && !identifier.includes('@')) {
+      // It's a username, lookup the email
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', identifier)
+        .maybeSingle();
+        
+      if (error || !data?.email) {
+        throw new Error('Nama pengguna tidak wujud atau tidak sah.');
+      }
+      emailToUse = data.email;
+    }
+    
     return supabase.auth.signInWithPassword({ 
-      email, 
+      email: emailToUse, 
       password,
       options: {
         redirectTo: window.location.origin
@@ -85,14 +104,89 @@ export function AuthProvider({ children }) {
     });
   }
 
-  function register(email, password) {
+  async function register(email, password, userData = {}) {
+    if (userData.username) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', userData.username)
+        .maybeSingle();
+        
+      if (data) {
+        throw new Error('Nama pengguna sudah digunakan. Sila pilih yang lain.');
+      }
+    }
+    
     return supabase.auth.signUp({ 
       email, 
       password,
       options: {
+        data: {
+          full_name: userData.full_name || '',
+          username: userData.username || '',
+          phone: userData.phone || ''
+        },
         redirectTo: window.location.origin
       }
     });
+  }
+
+  async function updateUserProfile(updates) {
+    if (!currentUser) throw new Error('Tiada sesi pengguna aktif.');
+    
+    // If username is changing, ensure uniqueness
+    if (updates.username) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', updates.username)
+        .neq('id', currentUser.id)
+        .maybeSingle();
+        
+      if (data) {
+        throw new Error('Nama pengguna sudah digunakan oleh pengguna lain.');
+      }
+    }
+
+    // Prepare auth updates (email, password)
+    const authUpdates = {};
+    if (updates.email && updates.email !== currentUser.email) {
+      authUpdates.email = updates.email;
+    }
+    if (updates.password) {
+      authUpdates.password = updates.password;
+    }
+    
+    if (Object.keys(authUpdates).length > 0) {
+      const { error: authError } = await supabase.auth.updateUser(authUpdates);
+      if (authError) throw authError;
+    }
+
+    // Update profiles table
+    const profileData = {
+      updated_at: new Date().toISOString()
+    };
+    if (updates.full_name !== undefined) profileData.full_name = updates.full_name;
+    if (updates.username !== undefined) profileData.username = updates.username;
+    if (updates.phone_number !== undefined) {
+      profileData.phone_number = updates.phone_number;
+      profileData.phone = updates.phone_number;
+    }
+    if (updates.password !== undefined && updates.password) {
+      profileData.password_hash = btoa(updates.password); 
+    }
+
+    const { data: updatedProfile, error: profileError } = await supabase
+      .from('profiles')
+      .update(profileData)
+      .eq('id', currentUser.id)
+      .select()
+      .single();
+
+    if (profileError) throw profileError;
+    
+    setCurrentUserProfile(updatedProfile);
+    return updatedProfile;
   }
 
   function loginWithGoogle() {
@@ -193,10 +287,12 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    currentUserProfile,
     userRole,
     loading,
     login,
     register,
+    updateUserProfile,
     loginWithGoogle,
     loginAsGuest,
     loginWithPhone,

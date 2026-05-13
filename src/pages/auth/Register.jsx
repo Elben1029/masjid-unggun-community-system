@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import BackButton from '../../components/ui/BackButton';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, AlertCircle, Phone, KeyRound } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Phone, KeyRound, User } from 'lucide-react';
 
 export default function Register() {
   const [authMode, setAuthMode] = useState('email'); // 'email', 'phone', 'otp'
   
-  // Email states
+  // Account states
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -31,13 +34,17 @@ export default function Register() {
     try {
       setError('');
       setLoading(true);
-      const { error } = await register(email, password);
+      const { error } = await register(email, password, {
+        full_name: fullName,
+        username,
+        phone: regPhone
+      });
       if (error) throw error;
-      alert('Sila semak emel anda untuk pengesahan akaun.');
+      alert('Pendaftaran berjaya! Sila log masuk.');
       navigate('/login');
     } catch (err) {
       console.error(err);
-      setError(`Gagal mendaftar akaun: ${err.message}`);
+      setError(err.message || 'Gagal mendaftar akaun.');
     } finally {
       setLoading(false);
     }
@@ -125,6 +132,40 @@ export default function Register() {
           {authMode === 'email' && (
             <form className="space-y-6" onSubmit={handleEmailSubmit}>
               <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nama Penuh</label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="text-slate-400" size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    placeholder="Ahmad bin Abdullah"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nama Pengguna (Unik)</label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="text-slate-400" size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    placeholder="ahmad123"
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emel</label>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -137,6 +178,22 @@ export default function Register() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     placeholder="anda@contoh.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nombor Telefon</label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Phone className="text-slate-400" size={18} />
+                  </div>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    className="appearance-none block w-full pl-10 px-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    placeholder="0123456789"
                   />
                 </div>
               </div>
@@ -181,7 +238,7 @@ export default function Register() {
                   disabled={loading}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
                 >
-                  {loading ? 'Mendaftar...' : 'Daftar dengan Emel'}
+                  {loading ? 'Mendaftar...' : 'Daftar Akaun'}
                 </button>
               </div>
             </form>
