@@ -94,6 +94,53 @@ BEGIN
     END IF;
 END $$;
 
+-- 5. Migrate Events table
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='category') THEN 
+        ALTER TABLE public.events ADD COLUMN category TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='start_time') THEN 
+        ALTER TABLE public.events ADD COLUMN start_time TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='end_time') THEN 
+        ALTER TABLE public.events ADD COLUMN end_time TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='location') THEN 
+        ALTER TABLE public.events ADD COLUMN location TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='event_type') THEN 
+        ALTER TABLE public.events ADD COLUMN event_type TEXT DEFAULT 'free';
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='event_fee') THEN 
+        ALTER TABLE public.events ADD COLUMN event_fee DECIMAL(10, 2);
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='bank_name') THEN 
+        ALTER TABLE public.events ADD COLUMN bank_name TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='account_name') THEN 
+        ALTER TABLE public.events ADD COLUMN account_name TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='account_number') THEN 
+        ALTER TABLE public.events ADD COLUMN account_number TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='qr_code_url') THEN 
+        ALTER TABLE public.events ADD COLUMN qr_code_url TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='payment_notes') THEN 
+        ALTER TABLE public.events ADD COLUMN payment_notes TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='registration_enabled') THEN 
+        ALTER TABLE public.events ADD COLUMN registration_enabled BOOLEAN DEFAULT true;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='max_participants') THEN 
+        ALTER TABLE public.events ADD COLUMN max_participants INTEGER;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='registration_deadline') THEN 
+        ALTER TABLE public.events ADD COLUMN registration_deadline TIMESTAMPTZ;
+    END IF; 
+END $$;
+
 -- ==========================================
 -- SCHEMA DEFINITIONS
 -- ==========================================
@@ -262,12 +309,41 @@ CREATE TABLE IF NOT EXISTS public.events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
     date TIMESTAMPTZ,
-    status TEXT DEFAULT 'Akan Datang',
+    start_time TEXT,
+    end_time TEXT,
+    location TEXT,
+    category TEXT,
+    status TEXT DEFAULT 'Akan Datang', -- Published, Draft, Akan Datang, Selesai, Dibatalkan
     description TEXT,
     image_url TEXT,
+    event_type TEXT DEFAULT 'free', -- free, paid
+    event_fee DECIMAL(10, 2),
+    bank_name TEXT,
+    account_name TEXT,
+    account_number TEXT,
+    qr_code_url TEXT,
+    payment_notes TEXT,
+    registration_enabled BOOLEAN DEFAULT true,
+    max_participants INTEGER,
+    registration_deadline TIMESTAMPTZ,
     registered INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Event Registrations table
+CREATE TABLE IF NOT EXISTS public.event_registrations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    participant_name TEXT,
+    phone_number TEXT,
+    registration_status TEXT DEFAULT 'pending', -- pending, confirmed, rejected, cancelled
+    payment_status TEXT DEFAULT 'pending', -- pending, confirmed
+    payment_proof_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, event_id)
 );
 
 -- Settings table (Global singleton)
@@ -333,6 +409,7 @@ ALTER TABLE public.asset_waqf ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.asset_waqf_donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cash_donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.korban_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
@@ -350,6 +427,16 @@ DROP POLICY IF EXISTS "Anyone can view events" ON public.events;
 DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
 CREATE POLICY "Anyone can view events" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (public.is_admin());
+
+-- Event Registrations Policies
+DROP POLICY IF EXISTS "Anyone can view own event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Anyone can create event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Users can update own event registrations" ON public.event_registrations;
+DROP POLICY IF EXISTS "Admins can manage event registrations" ON public.event_registrations;
+CREATE POLICY "Anyone can view own event registrations" ON public.event_registrations FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can create event registrations" ON public.event_registrations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update own event registrations" ON public.event_registrations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage event registrations" ON public.event_registrations FOR ALL USING (public.is_admin());
 
 -- Inventory Policies
 DROP POLICY IF EXISTS "Anyone can view inventory" ON public.inventory;
