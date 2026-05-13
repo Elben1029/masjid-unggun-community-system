@@ -40,7 +40,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'glass py-3' : 'bg-transparent py-5'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'navbar-scrolled py-3' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           {/* Logo */}
@@ -52,33 +52,38 @@ export default function Navbar() {
                 <span className="text-white font-bold text-xl">M</span>
               )}
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
+            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
               {settings?.mosque_name || (
-                <>Masjid <span className="text-emerald-700 dark:text-emerald-400">Unggun</span></>
+                <>Masjid <span className={scrolled ? 'text-emerald-400' : 'text-emerald-700 dark:text-emerald-400'}>Unggun</span></>
               )}
             </span>
           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={`text-base font-bold transition-colors hover:text-emerald-700 dark:hover:text-emerald-300 ${
-                  location.pathname === link.path ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`text-base font-bold transition-colors duration-300 ${
+                    isActive 
+                      ? scrolled ? 'text-emerald-400' : 'text-emerald-800 dark:text-emerald-400' 
+                      : scrolled ? 'text-slate-200 hover:text-white' : 'text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* User & Mobile Toggle */}
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-3">
               {userRole === 'admin' && (
-                <Link to="/admin" className="flex items-center gap-2 bg-emerald-700 dark:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:bg-emerald-800 dark:hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all border border-emerald-600 dark:border-emerald-500">
+                <Link to="/admin" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-all border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700' : 'bg-emerald-700 dark:bg-emerald-600 text-white hover:bg-emerald-800 dark:hover:bg-emerald-700 border-emerald-600 dark:border-emerald-500'}`}>
                   <ShieldAlert size={16} />
                   <span>Admin Panel</span>
                 </Link>
@@ -86,17 +91,17 @@ export default function Navbar() {
               
               {currentUser ? (
                 <>
-                  <Link to="/profile" className="flex items-center gap-2 text-slate-800 dark:text-slate-100 px-3 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold">
+                  <Link to="/profile" className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all text-sm font-bold ${scrolled ? 'text-slate-200 hover:bg-slate-800 hover:text-white' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <User size={16} />
                     <span>Profil</span>
                   </Link>
-                  <button onClick={handleLogout} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2 rounded-full text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 transition-all border border-slate-200 dark:border-slate-700">
+                  <button onClick={handleLogout} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all border ${scrolled ? 'bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                     <LogOut size={16} />
                     <span>Log Keluar</span>
                   </button>
                 </>
               ) : (
-                <Link to="/login" className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform duration-200 shadow-md border border-slate-800 dark:border-white">
+                <Link to="/login" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-800 dark:border-white hover:scale-105'}`}>
                   <User size={16} />
                   <span>Log Masuk</span>
                 </Link>
@@ -104,8 +109,9 @@ export default function Navbar() {
             </div>
 
             <button
-              className="md:hidden p-2 text-slate-600 dark:text-slate-300"
+              className={`md:hidden p-2 transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}
               onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle Menu"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

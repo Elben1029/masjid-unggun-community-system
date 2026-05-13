@@ -4,17 +4,17 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export default function Home() {
   const { settings } = useSettings();
-  
+
   return (
     <div className="flex flex-col items-center">
       {/* Hero Section */}
-      <section 
+      <section
         className="w-full relative py-20 lg:py-32 overflow-hidden flex flex-col items-center justify-center min-h-[80vh]"
       >
         {/* Banner Background with Dark Overlay for Maximum Readability */}
         {settings?.mosque_banner_url ? (
           <>
-            <div 
+            <div
               className="absolute inset-0 z-0 bg-cover bg-center"
               style={{ backgroundImage: `url(${settings.mosque_banner_url})` }}
             />
@@ -28,30 +28,27 @@ export default function Home() {
         )}
 
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-8">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm border mb-4 animate-fade-in ${
-            settings?.mosque_banner_url 
-              ? 'bg-black/30 backdrop-blur-md text-emerald-300 border-white/20' 
-              : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50'
-          }`}>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm border mb-4 animate-fade-in ${settings?.mosque_banner_url
+            ? 'bg-black/30 backdrop-blur-md text-emerald-300 border-white/20'
+            : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50'
+            }`}>
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             Sistem Pengurusan Masjid Digital
           </div>
-          
-          <h1 className={`text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] drop-shadow-sm ${
-            settings?.mosque_banner_url ? 'text-white text-shadow' : 'text-slate-900 dark:text-white'
-          }`}>
+
+          <h1 className={`text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] drop-shadow-sm ${settings?.mosque_banner_url ? 'text-white text-shadow' : 'text-slate-900 dark:text-white'
+            }`}>
             Selamat Datang ke <br />
             <span className={settings?.mosque_banner_url ? 'text-emerald-300 drop-shadow' : 'text-gradient'}>
-              {settings?.mosque_name || 'Masjid Unggun'}
+              {settings?.mosque_name || 'Masjid Al Huda Kampung Unggun Jaya'}
             </span>
           </h1>
-          
-          <p className={`text-lg md:text-xl font-semibold max-w-2xl mx-auto leading-relaxed ${
-            settings?.mosque_banner_url ? 'text-slate-100 text-shadow' : 'text-slate-700 dark:text-slate-200'
-          }`}>
+
+          <p className={`text-lg md:text-xl font-semibold max-w-2xl mx-auto leading-relaxed ${settings?.mosque_banner_url ? 'text-slate-100 text-shadow' : 'text-slate-700 dark:text-slate-200'
+            }`}>
             Platform bersepadu untuk menyemak acara, mendaftar korban, dan menghulurkan sumbangan secara mudah dan selamat.
           </p>
 
@@ -70,7 +67,7 @@ export default function Home() {
       {/* Features Section */}
       <section className="w-full max-w-7xl mx-auto px-4 py-16 mb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
+
           <div className="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
             <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
               <Calendar size={28} />

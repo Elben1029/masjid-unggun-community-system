@@ -34,6 +34,12 @@
   .text-shadow-md {
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
   }
+  .navbar-scrolled {
+    background-color: rgba(15, 23, 42, 0.92) !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
 }
 
 body {
