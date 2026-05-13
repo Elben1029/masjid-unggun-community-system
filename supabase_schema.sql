@@ -5,6 +5,31 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- SAFE MIGRATIONS FOR EXISTING TABLES
 -- ==========================================
 
+-- 0. Migrate Profiles table
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='full_name') THEN 
+        ALTER TABLE public.profiles ADD COLUMN full_name TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='username') THEN 
+        ALTER TABLE public.profiles ADD COLUMN username TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='phone_number') THEN 
+        ALTER TABLE public.profiles ADD COLUMN phone_number TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='password_hash') THEN 
+        ALTER TABLE public.profiles ADD COLUMN password_hash TEXT;
+    END IF; 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='status') THEN 
+        ALTER TABLE public.profiles ADD COLUMN status TEXT DEFAULT 'active';
+    END IF; 
+    
+    -- Add unique constraint if missing
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_username_key') THEN
+        ALTER TABLE public.profiles ADD CONSTRAINT profiles_username_key UNIQUE(username);
+    END IF;
+END $$;
+
 -- 1. Migrate Inventory table
 DO $$ 
 BEGIN 
