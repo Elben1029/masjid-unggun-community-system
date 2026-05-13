@@ -1,4 +1,4 @@
-import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle, Copy, X, Clock, CheckCircle, Info, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, Landmark, HandHeart, UploadCloud, Utensils, Box, Calendar as CalendarIcon, CheckCircle2, AlertCircle, Copy, X, Clock, CheckCircle, Info, XCircle, ChevronLeft, ChevronRight, Sparkles, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
@@ -18,7 +18,6 @@ export default function Donations() {
     amount: '',
     reference: '',
   });
-  const [cashFile, setCashFile] = useState(null);
   const [cashLoading, setCashLoading] = useState(false);
   const [cashSuccess, setCashSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -34,13 +33,12 @@ export default function Donations() {
   });
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodSuccess, setFoodSuccess] = useState(false);
-  const [selectedDateModal, setSelectedDateModal] = useState(null); // For the new Date selection modal
 
   // --- ASSET WAQF STATE ---
   const [assets, setAssets] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [assetForm, setAssetForm] = useState({
-    donorName: '',
+    donorName: profile?.full_name || '',
     quantity: 1
   });
   const [assetLoading, setAssetLoading] = useState(false);
@@ -119,14 +117,14 @@ export default function Donations() {
         user_id: user?.id || null,
         donor_name: cashForm.donorName || 'Hamba Allah',
         amount: Number(cashForm.amount),
-        purpose: 'Tabung Masjid',
+        purpose: 'Sumbangan Am / Tabung Masjid',
         status: 'pending'
       });
 
       if (error) throw error;
       
       setCashSuccess(true);
-      setCashForm({ donorName: '', amount: '', reference: '' });
+      setCashForm({ ...cashForm, amount: '', reference: '' });
       setTimeout(() => setCashSuccess(false), 5000);
     } catch (err) {
       console.error(err);
@@ -142,36 +140,38 @@ export default function Donations() {
 
     setFoodLoading(true);
     try {
-      const { data: existingBooking } = await supabase
+      // Check if already sponsored
+      const { data: existing } = await supabase
         .from("food_donations")
         .select("id")
         .eq("date", foodForm.date)
         .maybeSingle();
 
-      if (existingBooking) {
-        alert("Tarikh ini sudah pun ditaja. Sila pilih tarikh lain.");
+      if (existing) {
+        alert("Maaf, tarikh ini telah pun ditaja. Sila pilih tarikh lain.");
         setFoodLoading(false);
         return;
       }
 
       const { error } = await supabase.from('food_donations').insert({
+        user_id: user?.id || null,
         date: foodForm.date,
         donor_name: foodForm.donorName || 'Hamba Allah',
         food_type: foodForm.foodType,
-        user_id: user?.id || null,
         contact_number: foodForm.contactNumber,
         notes: foodForm.notes,
         status: 'pending'
       });
 
       if (error) throw error;
+      
       setFoodSuccess(true);
-      fetchFoodDates();
       setFoodForm({ date: '', donorName: '', foodType: '', contactNumber: '', notes: '' });
+      fetchFoodDates();
       setTimeout(() => setFoodSuccess(false), 5000);
     } catch (err) {
       console.error(err);
-      alert("Gagal menempah tarikh. Mungkin telah ditempah orang lain.");
+      alert("Gagal menghantar permohonan taja. Sila cuba lagi.");
     } finally {
       setFoodLoading(false);
     }
@@ -179,673 +179,428 @@ export default function Donations() {
 
   const handleAssetSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedAsset) return alert("Sila pilih aset.");
-
+    if (!selectedAsset) return alert("Sila pilih item yang ingin disumbangkan.");
+    
     setAssetLoading(true);
     try {
       const { error } = await supabase.from('asset_waqf_donations').insert({
-        inventory_id: selectedAsset.id,
         user_id: user?.id || null,
+        inventory_id: selectedAsset.id,
         donor_name: assetForm.donorName || 'Hamba Allah',
-        quantity: parseInt(assetForm.quantity),
+        quantity: Number(assetForm.quantity),
         status: 'pending'
       });
 
       if (error) throw error;
+
       setAssetSuccess(true);
-      setAssetForm({ donorName: '', quantity: 1 });
+      setAssetForm({ donorName: profile?.full_name || '', quantity: 1 });
       setSelectedAsset(null);
       setTimeout(() => setAssetSuccess(false), 5000);
     } catch (err) {
       console.error(err);
-      alert("Gagal menghantar makluman wakaf.");
+      alert("Gagal menghantar maklumat wakaf.");
     } finally {
       setAssetLoading(false);
     }
   };
 
-  const handleCopyAccount = () => {
-    const accountNo = settings?.account_number || '10052010123456';
-    navigator.clipboard.writeText(accountNo.replace(/\s+/g, ''));
+  // CALENDAR HELPERS
+  const daysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const startDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+  const getDayDetails = (dateStr) => foodDates.find(d => d.date === dateStr);
+  const isPastDate = (dateStr) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    return new Date(dateStr) < today;
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const generateCalendarGrid = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    // 0 = Sunday, 1 = Monday...
-    const firstDayIndex = new Date(year, month, 1).getDay(); 
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    const grid = [];
-    // Padding for first week
-    for (let i = 0; i < firstDayIndex; i++) {
-      grid.push(null);
-    }
-    // Days
-    for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(year, month, i);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      grid.push(`${yyyy}-${mm}-${dd}`);
-    }
-    return grid;
-  };
-
-  const getDayDetails = (dateStr) => {
-    return foodDates.find(f => f.date === dateStr);
-  };
-
-  const isPastDate = (dateStr) => {
-    if (!dateStr) return false;
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return dateStr < `${yyyy}-${mm}-${dd}`;
-  };
-
-  const getStatusColorIndicator = (status) => {
-    switch (status) {
-      case 'approved': return 'bg-blue-500';
-      case 'completed': return 'bg-green-600';
-      case 'cancelled': return 'bg-slate-400';
-      case 'pending': return 'bg-amber-500';
-      default: return 'bg-emerald-400';
-    }
-  };
-  
-  const getBadgeClass = (status) => {
-    switch (status) {
-      case 'approved': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'completed': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
-      case 'cancelled': return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
-      case 'pending': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-      default: return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'approved': return 'Diluluskan';
-      case 'completed': return 'Selesai';
-      case 'cancelled': return 'Dibatalkan';
-      case 'pending': return 'Menunggu';
-      default: return 'Available';
-    }
-  };
-
-  const slotLabels = {
-    'breakfast': 'Sarapan',
-    'lunch': 'Makan Tengah Hari',
-    'dinner': 'Makan Malam'
-  };
-  
-  const weekDays = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative text-slate-900 dark:text-white">
-      <div className="mb-12 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mb-6 shadow-sm">
-          <Heart size={32} className="animate-pulse" />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+      {/* Hero Header */}
+      <div className="bg-emerald-900 py-16 sm:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-emerald-500 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2"></div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-6">Kempen Sumbangan</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          "Perumpamaan orang yang menafkahkan hartanya di jalan Allah adalah serupa dengan sebutir benih yang menumbuhkan tujuh bulir, pada tiap-tiap bulir seratus biji."
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex justify-center mb-12">
-        <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl inline-flex flex-wrap justify-center gap-2">
-          <button 
-            onClick={() => setActiveTab('cash')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === 'cash' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-          >
-            <Landmark size={18} />
-            <span className="hidden sm:inline">Wang Ringgit</span>
-            <span className="sm:hidden">Wang</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('food')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === 'food' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-          >
-            <Utensils size={18} />
-            <span className="hidden sm:inline">Jadual Makanan</span>
-            <span className="sm:hidden">Makanan</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('asset')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === 'asset' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-          >
-            <Box size={18} />
-            <span className="hidden sm:inline">Aset Masjid</span>
-            <span className="sm:hidden">Aset</span>
-          </button>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <h1 className="text-4xl sm:text-6xl font-black text-white mb-6 tracking-tight">Sumbangan & Wakaf</h1>
+          <p className="text-emerald-100/80 text-lg sm:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+            Sumbangan anda membantu memakmurkan masjid dan meringankan beban komuniti setempat.
+          </p>
         </div>
       </div>
 
-      {/* CASH DONATION TAB */}
-      {activeTab === 'cash' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="lg:col-span-7 space-y-6">
-            
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center">
-              <Landmark className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
-              <h2 className="text-xl font-bold mb-2">Tabung Masjid</h2>
-              <p className="text-emerald-700 dark:text-emerald-300 font-medium">Sumbangan anda akan disalurkan terus ke Tabung Masjid untuk pelbagai kegunaan dan kebajikan.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
+        {/* Navigation Tabs */}
+        <div className="bg-white dark:bg-slate-900 p-2 rounded-[32px] shadow-2xl flex flex-wrap justify-center sm:justify-start gap-2 mb-12 border border-slate-200/50 dark:border-slate-800/50">
+          <button 
+            onClick={() => setActiveTab('cash')} 
+            className={`flex items-center gap-2 px-8 py-4 rounded-[24px] font-black transition-all duration-500 ${activeTab === 'cash' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            <Landmark size={20} /> Sumbangan Tunai
+          </button>
+          <button 
+            onClick={() => setActiveTab('food')} 
+            className={`flex items-center gap-2 px-8 py-4 rounded-[24px] font-black transition-all duration-500 ${activeTab === 'food' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            <Utensils size={20} /> Tajaan Makanan
+          </button>
+          <button 
+            onClick={() => setActiveTab('asset')} 
+            className={`flex items-center gap-2 px-8 py-4 rounded-[24px] font-black transition-all duration-500 ${activeTab === 'asset' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            <Box size={20} /> Wakaf Barangan
+          </button>
+        </div>
+
+        {/* Tab Contents */}
+        {activeTab === 'cash' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Payment Details */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800">
+                <h3 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">Maklumat Akaun</h3>
+                
+                <div className="space-y-8">
+                  <div className="flex items-center gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                    <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                      <Landmark className="text-emerald-600" size={32} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Maybank Islamic</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white truncate">5520 1234 5678</p>
+                      <p className="text-xs text-slate-500 font-medium mt-1">Bendahari Masjid Unggun</p>
+                    </div>
+                    <button onClick={() => handleCopy('552012345678')} className="p-3 text-slate-400 hover:text-emerald-600 transition-colors">
+                      {copied ? <CheckCircle size={20} className="text-emerald-500" /> : <Copy size={20} />}
+                    </button>
+                  </div>
+
+                  <div className="text-center p-8 bg-emerald-50 dark:bg-emerald-950/30 rounded-[40px] border-2 border-emerald-100 dark:border-emerald-900/50">
+                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-4 uppercase tracking-widest">Imbas Kod QR DuitNow</p>
+                    {settings?.donation_qr_url ? (
+                      <img src={settings.donation_qr_url} alt="QR Code" className="w-48 h-48 mx-auto rounded-3xl shadow-xl border-4 border-white" />
+                    ) : (
+                      <div className="w-48 h-48 mx-auto bg-slate-200 dark:bg-slate-800 rounded-3xl flex items-center justify-center">
+                        <UploadCloud className="text-slate-400" size={48} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950/20 p-8 rounded-[32px] border border-amber-100 dark:border-amber-900/30 flex gap-6">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <Info size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-900 dark:text-amber-200 mb-1">Nota Penting</h4>
+                  <p className="text-sm text-amber-800/70 dark:text-amber-400/70 leading-relaxed">Sila simpan resit transaksi anda untuk tujuan pengesahan oleh pihak pengurusan masjid.</p>
+                </div>
+              </div>
             </div>
 
-            <div className="glass p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-              <h3 className="text-xl font-bold mb-6 border-b pb-4 border-slate-100 dark:border-slate-800">Maklumat Pembayaran</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                {/* QR Section */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
-                  <h4 className="font-bold mb-4">Bayar Menggunakan QR</h4>
-                  {(settings?.qr_image_url || settings?.qr_code_url) ? (
-                    <img src={settings.qr_image_url || settings.qr_code_url} alt="DuitNow QR" className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-white p-3 shadow-md object-contain mb-4" />
-                  ) : (
-                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${settings?.account_number || '10052010123456'}`} alt="DuitNow QR" className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-white p-3 shadow-md mb-4" />
-                  )}
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Imbas kod QR menggunakan aplikasi bank atau e-wallet anda.
-                  </p>
-                </div>
-
-                {/* Bank Transfer Section */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col justify-center">
-                  <h4 className="font-bold mb-4 text-center md:text-left">Pemindahan Bank</h4>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">Bank</p>
-                      <p className="font-bold text-lg">{settings?.bank_name || 'Bank Islam Malaysia Berhad'}</p>
+            {/* Donation Form */}
+            <div className="lg:col-span-7">
+              <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800">
+                <h3 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">Maklumkan Sumbangan</h3>
+                
+                {cashSuccess ? (
+                  <div className="text-center py-12 animate-in zoom-in-95 duration-500">
+                    <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                      <CheckCircle2 size={48} />
                     </div>
-                    
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">No Akaun</p>
-                      <div className="flex items-center gap-3">
-                        <p className="font-mono text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">
-                          {settings?.account_number || '1005 2010 1234 56'}
-                        </p>
-                        <button 
-                          onClick={handleCopyAccount}
-                          className="p-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300"
-                          title="Salin No Akaun"
-                        >
-                          {copied ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}
-                        </button>
+                    <h4 className="text-3xl font-black mb-4">Alhamdulillah!</h4>
+                    <p className="text-slate-500 font-medium text-lg">Maklumat sumbangan anda telah diterima. Semoga Allah memberkati rezeki anda.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleCashSubmit} className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Penyumbang</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={cashForm.donorName}
+                          onChange={e => setCashForm({...cashForm, donorName: e.target.value})}
+                          placeholder="Cth: Hamba Allah"
+                          className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Jumlah Sumbangan (RM)</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={cashForm.amount}
+                          onChange={e => setCashForm({...cashForm, amount: e.target.value})}
+                          placeholder="0.00"
+                          className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold text-emerald-600"
+                        />
                       </div>
                     </div>
-                    
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">Nama Akaun</p>
-                      <p className="font-medium text-slate-700 dark:text-slate-300">{settings?.account_name || 'Masjid Unggun Kota Kinabalu'}</p>
-                    </div>
-                  </div>
-                </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={cashLoading}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {cashLoading ? 'Sedang Memproses...' : 'Hantar Maklumat Sumbangan'}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
+        )}
 
-          <div className="lg:col-span-5">
-            <div className="glass-card rounded-3xl p-6 sm:p-8 sticky top-28 border border-slate-200 dark:border-slate-800">
-              <h2 className="text-xl font-bold mb-6">Makluman Sumbangan</h2>
-              
-              {cashSuccess ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Alhamdulillah!</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Maklumat sumbangan anda telah diterima. Terima kasih atas keprihatinan anda.</p>
+        {activeTab === 'food' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Calendar View */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between items-center mb-10">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">Kalendar Tajaan</h3>
+                <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 px-6 py-3 rounded-2xl">
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="hover:text-emerald-600 transition-colors"><ChevronLeft size={20} /></button>
+                  <span className="font-black text-slate-800 dark:text-white min-w-[140px] text-center uppercase tracking-widest text-sm">
+                    {currentMonth.toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="hover:text-emerald-600 transition-colors"><ChevronRight size={20} /></button>
                 </div>
-              ) : (
-                <form onSubmit={handleCashSubmit} className="space-y-4 sm:space-y-5">
-                  <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800 flex items-start gap-3">
-                    <Info size={18} className="text-emerald-600 shrink-0 mt-0.5" />
-                    <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                      Sila masukkan maklumat sumbangan selepas anda membuat transaksi melalui QR atau perbankan internet untuk rujukan kami.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Penyumbang (Pilihan)</label>
-                    <input
-                      type="text"
-                      value={cashForm.donorName}
-                      onChange={e => setCashForm({...cashForm, donorName: e.target.value})}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Hamba Allah"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Sumbangan (RM)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      required
-                      value={cashForm.amount}
-                      onChange={e => setCashForm({...cashForm, amount: e.target.value})}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold text-emerald-600"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={cashLoading}
-                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
-                  >
-                    {cashLoading ? 'Memproses...' : 'Sahkan Sumbangan'}
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FOOD DONATION TAB */}
-      {activeTab === 'food' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="lg:col-span-8 glass-card rounded-3xl p-4 sm:p-8 border border-slate-200 dark:border-slate-800">
-            {/* Calendar Header */}
-            <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                <CalendarIcon className="text-emerald-500" />
-                Jadual Sumbangan
-              </h2>
-              <div className="flex items-center gap-1 sm:gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 sm:p-2 rounded-xl">
-                <button
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                  className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <ChevronLeft size={20} className="text-slate-700 dark:text-slate-300" />
-                </button>
-                <span className="font-bold py-1 min-w-[120px] sm:min-w-[140px] text-center text-sm sm:text-base">
-                  {currentMonth.toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' })}
-                </span>
-                <button
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                  className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <ChevronRight size={20} className="text-slate-700 dark:text-slate-300" />
-                </button>
               </div>
-            </div>
-            
-            {/* Monthly Calendar Grid */}
-            <div className="w-full">
-              {/* Day headers */}
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
-                {weekDays.map(day => (
-                  <div key={day} className="text-center text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider py-2">
-                    <span className="hidden sm:inline">{day}</span>
-                    <span className="sm:hidden">{day.substring(0,3)}</span>
-                  </div>
+
+              <div className="grid grid-cols-7 gap-4 mb-4">
+                {['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab'].map(day => (
+                  <div key={day} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{day}</div>
                 ))}
               </div>
-              
-              {/* Calendar cells */}
-              <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                {generateCalendarGrid().map((dateStr, index) => {
-                  if (!dateStr) {
-                    return <div key={`empty-${index}`} className="min-h-[70px] sm:min-h-[110px] rounded-xl bg-slate-50/50 dark:bg-slate-800/10"></div>;
-                  }
-                  
-                  const dateObj = new Date(dateStr);
-                  const dateNum = dateObj.getDate();
-                  const past = isPastDate(dateStr);
-                  const isToday = dateStr === new Date().toLocaleDateString('en-CA');
-                  const isSelected = foodForm.date === dateStr;
-                  
-                  // Get booking for this date
+
+              <div className="grid grid-cols-7 gap-4">
+                {Array.from({ length: startDayOfMonth(currentMonth) }).map((_, i) => (
+                  <div key={`empty-${i}`} className="aspect-square bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl"></div>
+                ))}
+                {Array.from({ length: daysInMonth(currentMonth) }).map((_, i) => {
+                  const day = i + 1;
+                  const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const booking = getDayDetails(dateStr);
-                  const isSponsored = !!booking;
-                  
+                  const past = isPastDate(dateStr);
+                  const isSelected = foodForm.date === dateStr;
+                  const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
                   return (
                     <button 
-                      key={dateStr} 
-                      onClick={() => {
-                        if (!past) {
-                          setFoodForm({...foodForm, date: dateStr});
-                        }
-                      }}
-                      className={`relative min-h-[70px] sm:min-h-[110px] p-2 flex flex-col items-center sm:items-start rounded-xl border transition-all duration-300 ${
-                        past 
-                          ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-600' 
-                          : isSelected
-                            ? 'border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-900/20'
-                            : isSponsored
-                              ? 'border-amber-200 bg-amber-50/50 hover:shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20'
-                              : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-700'
+                      key={day}
+                      disabled={past}
+                      onClick={() => setFoodForm({...foodForm, date: dateStr})}
+                      className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all relative overflow-hidden group ${
+                        past ? 'bg-slate-50 border-slate-50 opacity-40 grayscale' : 
+                        booking ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                        isSelected ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg' : 
+                        'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-emerald-300'
                       }`}
                     >
-                      <span className={`text-xs sm:text-sm font-bold w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full mb-1 sm:mb-2 ${
-                        isToday ? 'bg-emerald-600 text-white' : ''
-                      }`}>
-                        {dateNum}
-                      </span>
-                      
-                      {!past && (
-                        <div className="w-full flex flex-col gap-1 items-center sm:items-start">
-                          {isSponsored ? (
-                            <>
-                              <div className="hidden sm:block text-[10px] font-bold text-amber-700 dark:text-amber-400 leading-tight">Ditaja Oleh:</div>
-                              <div className="hidden sm:block text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate w-full">{booking.donor_name}</div>
-                              <div className="sm:hidden w-2 h-2 rounded-full bg-amber-500"></div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="hidden sm:block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Kosong</div>
-                              <div className="sm:hidden w-2 h-2 rounded-full bg-emerald-400"></div>
-                            </>
-                          )}
-                        </div>
-                      )}
+                      <span className={`text-lg font-black ${isToday ? 'underline decoration-4 underline-offset-4' : ''}`}>{day}</span>
+                      {booking && !isSelected && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>}
+                      {!booking && !past && !isSelected && <div className="w-1.5 h-1.5 bg-emerald-200 rounded-full group-hover:scale-150 transition-transform"></div>}
                     </button>
                   );
                 })}
               </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 mt-8 text-xs sm:text-sm text-slate-500 dark:text-slate-400 justify-center border-t border-slate-100 dark:border-slate-800 pt-6">
-              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700"></div> Tersedia (Available)</span>
-              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> Telah Ditaja (Sponsored)</span>
-              <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-600"></div> Hari Ini</span>
-            </div>
-          </div>
 
-          <div className="lg:col-span-4">
-            <div className="glass-card rounded-3xl p-6 sm:p-8 sticky top-28 border border-slate-200 dark:border-slate-800">
-              <h2 className="text-xl font-bold mb-6">Borang Tempahan</h2>
-              {foodSuccess ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Alhamdulillah!</h3>
-                  <p className="text-slate-600 dark:text-slate-400 text-sm">Tempahan tarikh sumbangan anda sedang diproses. Pihak masjid akan menghubungi anda sebentar lagi.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleFoodSubmit} className="space-y-4">
-                  {foodForm.date ? (
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-800">
-                      <div className="flex items-center gap-3">
-                        <CalendarIcon size={20} />
-                        <div>
-                          <p className="text-[10px] opacity-80 uppercase font-bold tracking-wider">Tarikh Dipilih</p>
-                          <p className="font-bold text-sm">
-                            {new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'})}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 p-4 rounded-xl mb-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700">
-                      <Info size={20} className="shrink-0 mt-0.5 text-slate-400" />
-                      <p className="text-sm">Sila klik pada tarikh tersedia di kalendar untuk menaja hidangan komuniti.</p>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Penaja / Kumpulan</label>
-                    <input
-                      type="text"
-                      required
-                      value={foodForm.donorName}
-                      onChange={e => setFoodForm({...foodForm, donorName: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="Cth: Keluarga Hj Ahmad"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Menu Makanan (Pilihan)</label>
-                    <input
-                      type="text"
-                      value={foodForm.foodType}
-                      onChange={e => setFoodForm({...foodForm, foodType: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="Cth: Nasi Lemak / Mee Goreng"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Telefon</label>
-                    <input
-                      type="tel"
-                      required
-                      value={foodForm.contactNumber}
-                      onChange={e => setFoodForm({...foodForm, contactNumber: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hajat / Doa / Nota (Pilihan)</label>
-                    <textarea
-                      rows="3"
-                      value={foodForm.notes}
-                      onChange={e => setFoodForm({...foodForm, notes: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="Masukkan doa atau nota khas untuk penajaan ini"
-                    ></textarea>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!foodForm.date || foodLoading}
-                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20 mt-4"
-                  >
-                    {foodLoading ? 'Menghantar...' : 'Sahkan Penajaan'}
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ASSET WAQF TAB */}
-      {activeTab === 'asset' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="lg:col-span-7 space-y-6">
-            <h2 className="text-2xl font-bold mb-6">Senarai Keperluan Aset Masjid</h2>
-            {assets.length === 0 ? (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 text-center">
-                <Box className="mx-auto h-12 w-12 text-amber-500 mb-3 opacity-50" />
-                <p className="text-amber-800 dark:text-amber-300 font-medium">Tiada senarai aset diperlukan buat masa ini.</p>
+              <div className="mt-10 flex gap-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest justify-center">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-white border border-slate-200"></div> Tersedia</div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500"></div> Telah Ditaja</div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-600"></div> Pilihan</div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {assets.map(asset => {
-                  const percent = Math.min(100, Math.round(((asset.received_quantity || 0) / (asset.needed_quantity || 1)) * 100));
-                  return (
-                    <div 
-                      key={asset.id}
-                      onClick={() => setSelectedAsset(asset)}
-                      className={`cursor-pointer rounded-2xl border-2 transition-all duration-300 flex flex-col overflow-hidden ${
-                        selectedAsset?.id === asset.id 
-                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 shadow-md transform -translate-y-1' 
-                          : 'border-transparent glass-card hover:border-emerald-200 dark:hover:border-emerald-800'
-                      }`}
-                    >
-                      {asset.image_url && (
-                        <div className="h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
-                          <img src={asset.image_url} alt={asset.item} className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <div className="p-5 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold line-clamp-1 flex-1">{asset.item}</h3>
-                          {percent >= 100 ? (
-                            <span className="ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] font-bold rounded-full whitespace-nowrap">Selesai</span>
-                          ) : percent > 50 ? (
-                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-bold rounded-full whitespace-nowrap">Hampir Selesai</span>
-                          ) : (
-                            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold rounded-full whitespace-nowrap">Diperlukan</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 flex-1">Kategori: {asset.category}</p>
-                        
-                        <div className="mt-auto">
-                          <div className="flex justify-between text-xs font-bold mb-1.5">
-                            <span className="text-emerald-600 dark:text-emerald-400">{asset.received_quantity || 0} Unit</span>
-                            <span className="text-slate-500">{percent}% (Sasaran: {asset.needed_quantity || 0})</span>
-                          </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                            <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="lg:col-span-5">
-            <div className="glass-card rounded-3xl p-6 sm:p-8 sticky top-28 border border-slate-200 dark:border-slate-800">
-              <h2 className="text-xl font-bold mb-6">Borang Wakaf Aset</h2>
-              
-              {assetSuccess ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Alhamdulillah!</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Makluman wakaf anda telah dihantar. Pihak masjid akan menghubungi anda sebentar lagi.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleAssetSubmit} className="space-y-4 sm:space-y-5">
-                  {!selectedAsset && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-4 rounded-xl mb-4 flex items-start gap-3">
-                      <AlertCircle size={20} className="shrink-0 mt-0.5" />
-                      <p className="text-sm">Sila pilih aset yang ingin diwakafkan dari senarai di sebelah.</p>
-                    </div>
-                  )}
-
-                  {selectedAsset && (
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-4 mb-4">
-                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Aset Dipilih</p>
-                      <p className="font-bold">{selectedAsset.item}</p>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Pewakaf</label>
-                    <input
-                      type="text"
-                      required
-                      value={assetForm.donorName}
-                      onChange={e => setAssetForm({...assetForm, donorName: e.target.value})}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Cth: Hamba Allah"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kuantiti (Unit)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={assetForm.quantity}
-                      onChange={e => setAssetForm({...assetForm, quantity: e.target.value})}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!selectedAsset || assetLoading}
-                    className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
-                  >
-                    {assetLoading ? 'Menghantar...' : 'Sahkan Wakaf'}
-                  </button>
-                </form>
-              )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* QUICK VIEW / SLOT DETAILS MODAL FOR CALENDAR (Mobile Bottom Sheet / Desktop Modal) */}
-      {selectedDateModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedDateModal(null)}>
-          <div 
-            className="bg-white dark:bg-slate-900 w-full sm:max-w-xl sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:slide-in-from-bottom-8" 
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Maklumat Tempahan</p>
-                <h3 className="text-xl sm:text-2xl font-bold">
-                  {new Date(selectedDateModal).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
-                </h3>
-              </div>
-              <button onClick={() => setSelectedDateModal(null)} className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
-                <X size={20} className="text-slate-600 dark:text-slate-300" />
-              </button>
-            </div>
-            
-            {/* Modal Body: Slots */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
-              {['breakfast', 'lunch', 'dinner'].map(slotId => {
-                const booking = getSlotDetails(selectedDateModal, slotId);
-                const past = isPastDate(selectedDateModal);
+            {/* Food Form */}
+            <div className="lg:col-span-5">
+              <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800 sticky top-28">
+                <h3 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">Borang Tajaan</h3>
                 
-                return (
-                  <div key={slotId} className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50/50 dark:bg-slate-800/20">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-bold text-lg">{slotLabels[slotId]}</h4>
-                        {!booking && <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Kosong</span>}
-                        {booking && <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${getBadgeClass(booking.status)}`}>{getStatusLabel(booking.status)}</span>}
-                      </div>
-                      
-                      {booking ? (
-                        <div className="space-y-1 text-sm">
-                          <p><span className="text-slate-500 dark:text-slate-400">Disumbang oleh:</span> <span className="font-medium text-slate-900 dark:text-white">{booking.donor_name}</span></p>
-                          <p><span className="text-slate-500 dark:text-slate-400">Menu:</span> <span className="font-medium text-slate-900 dark:text-white">{booking.food_type}</span></p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {past ? 'Telah Berlalu' : 'Tiada tempahan untuk slot ini. Anda boleh menempah slot ini sekarang.'}
-                        </p>
-                      )}
+                {foodSuccess ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                      <CheckCircle2 size={48} />
                     </div>
-                    
-                    {!booking && !past && (
-                      <button 
-                        onClick={() => {
-                          setFoodForm({...foodForm, date: selectedDateModal, slot: slotId});
-                          setSelectedDateModal(null);
-                          // Optional scroll to form logic could go here
-                        }}
-                        className="px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors w-full sm:w-auto text-center"
-                      >
-                        Tempah Slot
-                      </button>
-                    )}
+                    <h4 className="text-2xl font-black mb-4">Tempahan Berjaya!</h4>
+                    <p className="text-slate-500 font-medium">Pihak masjid akan menghubungi anda untuk pengesahan menu dan nota sumbangan.</p>
                   </div>
-                );
-              })}
+                ) : (
+                  <form onSubmit={handleFoodSubmit} className="space-y-6">
+                    {!foodForm.date ? (
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                        <CalendarIcon className="mx-auto mb-3 text-slate-300" size={32} />
+                        <p className="text-sm font-medium text-slate-500">Sila pilih tarikh pada kalendar untuk memulakan tajaan.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-3xl border border-emerald-100 dark:border-emerald-800">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Tarikh Pilihan</p>
+                        <p className="text-xl font-black text-emerald-900 dark:text-emerald-300">
+                          {new Date(foodForm.date).toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Penaja / Kumpulan</label>
+                        <input type="text" required value={foodForm.donorName} onChange={e => setFoodForm({...foodForm, donorName: e.target.value})} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold" placeholder="Nama anda" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Menu Makanan (Jika ada)</label>
+                        <input type="text" value={foodForm.foodType} onChange={e => setFoodForm({...foodForm, foodType: e.target.value})} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold" placeholder="Cth: Nasi Lemak / Bebas" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Telefon</label>
+                        <input type="tel" required value={foodForm.contactNumber} onChange={e => setFoodForm({...foodForm, contactNumber: e.target.value})} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold" placeholder="012-3456789" />
+                      </div>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={!foodForm.date || foodLoading}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {foodLoading ? 'Sila Tunggu...' : 'Hantar Tempahan'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'asset' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Asset Selection */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800">
+              <h3 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">Pilih Item Keperluan</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {assets.length === 0 ? (
+                  <div className="col-span-full py-20 text-center text-slate-400 font-bold">Tiada item keperluan buat masa ini.</div>
+                ) : assets.map(asset => (
+                  <button 
+                    key={asset.id}
+                    onClick={() => setSelectedAsset(asset)}
+                    className={`p-6 rounded-[32px] border-2 text-left transition-all relative overflow-hidden group ${
+                      selectedAsset?.id === asset.id 
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 ring-4 ring-emerald-500/10' 
+                        : 'border-slate-100 dark:border-slate-800 hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0 border border-slate-100">
+                        {asset.image_url ? <img src={asset.image_url} className="w-full h-full object-cover" /> : <Box className="w-full h-full p-4 text-slate-300" />}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">{asset.item}</h4>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          asset.urgency_level === 'Sangat Diperlukan' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
+                        }`}>{asset.urgency_level}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <span>Progress</span>
+                        <span>{Math.min(100, Math.round((asset.received_quantity / asset.needed_quantity) * 100))}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, Math.round((asset.received_quantity / asset.needed_quantity) * 100))}%` }}></div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Asset Form */}
+            <div className="lg:col-span-5">
+              <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-xl border border-slate-100 dark:border-slate-800 sticky top-28">
+                <h3 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">Borang Wakaf</h3>
+                
+                {assetSuccess ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                      <CheckCircle2 size={48} />
+                    </div>
+                    <h4 className="text-2xl font-black mb-4">Terima Kasih!</h4>
+                    <p className="text-slate-500 font-medium">Permohonan wakaf barangan anda telah diterima. Pihak kami akan menghubungi anda segera.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleAssetSubmit} className="space-y-6">
+                    {!selectedAsset ? (
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                        <Box className="mx-auto mb-3 text-slate-300" size={32} />
+                        <p className="text-sm font-medium text-slate-500">Sila pilih barangan yang ingin diwakafkan pada senarai item.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-3xl border border-emerald-100 dark:border-emerald-800 flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-xl overflow-hidden border border-emerald-200 shrink-0">
+                          {selectedAsset.image_url ? <img src={selectedAsset.image_url} className="w-full h-full object-cover" /> : <Box className="p-3 text-emerald-200" />}
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Item Terpilih</p>
+                          <p className="text-lg font-black text-emerald-900 dark:text-emerald-300">{selectedAsset.item}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Pewakaf</label>
+                        <input type="text" required value={assetForm.donorName} onChange={e => setAssetForm({...assetForm, donorName: e.target.value})} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold" placeholder="Cth: Hamba Allah" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Kuantiti (Unit)</label>
+                        <input type="number" min="1" required value={assetForm.quantity} onChange={e => setAssetForm({...assetForm, quantity: e.target.value})} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold" />
+                      </div>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={!selectedAsset || assetLoading}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {assetLoading ? 'Sedang Menghantar...' : 'Sahkan Wakaf Barangan'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Support */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
+        <div className="bg-slate-900 rounded-[48px] p-12 text-center relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-teal-600/20 opacity-50"></div>
+          <div className="relative z-10">
+            <h3 className="text-3xl font-black text-white mb-4">Terima Kasih Atas Keprihatinan Anda</h3>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-10 font-medium">Setiap sumbangan anda amatlah dihargai dan digunakan sebaiknya untuk kelestarian Masjid Unggun.</p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <div className="bg-white/5 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/10 text-emerald-400 font-black flex items-center gap-3">
+                <CheckCircle size={20} /> Transaksi Selamat
+              </div>
+              <div className="bg-white/5 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/10 text-emerald-400 font-black flex items-center gap-3">
+                <CheckCircle size={20} /> Amanah & Telus
+              </div>
             </div>
           </div>
         </div>
-      )}
-
+      </div>
     </div>
   );
 }
