@@ -17,8 +17,14 @@ export default function Profile() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // UI states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Status states
   const [loading, setLoading] = useState(false);
@@ -60,21 +66,62 @@ export default function Profile() {
     setLoadingRegs(false);
   }
 
+  // Password strength calculation
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return 0;
+    let strength = 0;
+    if (pwd.length >= 6) strength += 25;
+    if (pwd.length >= 10) strength += 25;
+    if (/[A-Z]/.test(pwd)) strength += 25;
+    if (/[0-9]/.test(pwd)) strength += 25;
+    return strength;
+  };
+
+  const strength = getPasswordStrength(password);
+  const strengthColor = strength <= 25 ? 'bg-rose-500' : strength <= 50 ? 'bg-amber-500' : strength <= 75 ? 'bg-blue-500' : 'bg-emerald-500';
+  const strengthText = strength <= 25 ? 'Lemah' : strength <= 50 ? 'Sederhana' : strength <= 75 ? 'Kuat' : 'Sangat Kuat';
+
   async function handleSubmit(e) {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
 
+    console.log("🚀 Starting profile update process...");
+
     // Validation rules
-    if (password && password.length < 6) {
-      return setErrorMsg('Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.');
-    }
-    if (password && password !== confirmPassword) {
-      return setErrorMsg('Pengesahan kata laluan tidak sepadan.');
+    if (password) {
+      if (!currentPassword) {
+        return setErrorMsg('Sila masukkan kata laluan semasa untuk menukar kata laluan baharu.');
+      }
+      if (password.length < 6) {
+        return setErrorMsg('Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.');
+      }
+      if (password === currentPassword) {
+        return setErrorMsg('Kata laluan baharu tidak boleh sama dengan kata laluan semasa.');
+      }
+      if (password !== confirmPassword) {
+        return setErrorMsg('Pengesahan kata laluan tidak sepadan.');
+      }
     }
 
     try {
       setLoading(true);
+
+      // Verify current password if changing password
+      if (password) {
+        console.log("🔐 Verifying current password...");
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+          email: currentUser.email,
+          password: currentPassword
+        });
+
+        if (verifyError) {
+          console.error("❌ Password verification failed:", verifyError);
+          throw new Error('Kata laluan semasa anda tidak sah. Sila cuba lagi.');
+        }
+        console.log("✅ Current password verified");
+      }
+
       const updates = {
         full_name: fullName,
         username,
@@ -86,14 +133,20 @@ export default function Profile() {
         updates.password = password;
       }
 
+      console.log("📤 Sending updates to AuthContext...", updates);
       await updateUserProfile(updates);
+      
       setSuccessMsg('Profil anda telah dikemas kini dengan berjaya.');
       setIsEditing(false);
+      setCurrentPassword('');
       setPassword('');
       setConfirmPassword('');
+      
+      // Refresh registrations to be sure
+      fetchMyRegistrations();
     } catch (err) {
-      console.error(err);
-      setErrorMsg(err.message || 'Gagal mengemas kini profil.');
+      console.error("💥 Profile update error:", err);
+      setErrorMsg(err.message || 'Gagal mengemas kini profil. Sila pastikan maklumat anda betul.');
     } finally {
       setLoading(false);
     }
@@ -268,10 +321,39 @@ export default function Profile() {
 
               {/* Password Update Options */}
               {isEditing && (
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-6">
-                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-4">
-                    Tukar Kata Laluan (Pilihan)
-                  </p>
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800/60 mt-6 space-y-6">
+                  <div>
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <ShieldAlert size={14} />
+                      Tukar Kata Laluan (Sila isi jika perlu)
+                    </p>
+                    
+                    <div className="max-w-md">
+                      <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">
+                        Kata Laluan Semasa <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Lock className="text-slate-400" size={18} />
+                        </div>
+                        <input
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="block w-full pl-10 pr-10 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          placeholder="Wajib untuk penukaran kata laluan"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                        >
+                          {showCurrentPassword ? <X size={18} /> : <Edit3 size={18} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">
@@ -282,13 +364,35 @@ export default function Profile() {
                           <Lock className="text-slate-400" size={18} />
                         </div>
                         <input
-                          type="password"
+                          type={showNewPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                          placeholder="Biarkan kosong jika tiada perubahan"
+                          className="block w-full pl-10 pr-10 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          placeholder="Min. 6 aksara"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                        >
+                          {showNewPassword ? <X size={18} /> : <Edit3 size={18} />}
+                        </button>
                       </div>
+                      
+                      {password && (
+                        <div className="mt-2">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Kekuatan: {strengthText}</span>
+                            <span className="text-[10px] font-bold text-slate-400">{strength}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all duration-500 ${strengthColor}`} 
+                              style={{ width: `${strength}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -300,12 +404,19 @@ export default function Profile() {
                           <Lock className="text-slate-400" size={18} />
                         </div>
                         <input
-                          type="password"
+                          type={showConfirmPassword ? "text" : "password"}
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          className="block w-full pl-10 pr-10 py-3 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                           placeholder="Ulang kata laluan baharu"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                        >
+                          {showConfirmPassword ? <X size={18} /> : <Edit3 size={18} />}
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -134,21 +134,24 @@ export function AuthProvider({ children }) {
   async function updateUserProfile(updates) {
     if (!currentUser) throw new Error('Tiada sesi pengguna aktif.');
     
+    console.log("🛠️ Updating profile for user:", currentUser.id, updates);
+
     // If username is changing, ensure uniqueness
-    if (updates.username) {
-      const { data } = await supabase
+    if (updates.username && updates.username !== currentUserProfile?.username) {
+      const { data, error: checkError } = await supabase
         .from('profiles')
         .select('id')
         .eq('username', updates.username)
         .neq('id', currentUser.id)
         .maybeSingle();
         
+      if (checkError) console.error("Error checking username uniqueness:", checkError);
       if (data) {
         throw new Error('Nama pengguna sudah digunakan oleh pengguna lain.');
       }
     }
 
-    // Prepare auth updates (email, password)
+    // 1. Handle Auth Updates (Sensitive data)
     const authUpdates = {};
     if (updates.email && updates.email !== currentUser.email) {
       authUpdates.email = updates.email;
@@ -158,24 +161,28 @@ export function AuthProvider({ children }) {
     }
     
     if (Object.keys(authUpdates).length > 0) {
+      console.log("🔐 Updating Auth credentials...");
       const { error: authError } = await supabase.auth.updateUser(authUpdates);
-      if (authError) throw authError;
+      if (authError) {
+        console.error("❌ Auth update failed:", authError);
+        throw authError;
+      }
+      console.log("✅ Auth updated successfully");
     }
 
-    // Update profiles table
+    // 2. Update profiles table
     const profileData = {
       updated_at: new Date().toISOString()
     };
+    
     if (updates.full_name !== undefined) profileData.full_name = updates.full_name;
     if (updates.username !== undefined) profileData.username = updates.username;
     if (updates.phone_number !== undefined) {
       profileData.phone_number = updates.phone_number;
       profileData.phone = updates.phone_number;
     }
-    if (updates.password !== undefined && updates.password) {
-      profileData.password_hash = btoa(updates.password); 
-    }
 
+    console.log("💾 Updating profiles table...", profileData);
     const { data: updatedProfile, error: profileError } = await supabase
       .from('profiles')
       .update(profileData)
@@ -183,8 +190,12 @@ export function AuthProvider({ children }) {
       .select()
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      console.error("❌ Profile table update failed:", profileError);
+      throw profileError;
+    }
     
+    console.log("✅ Profile updated successfully:", updatedProfile);
     setCurrentUserProfile(updatedProfile);
     return updatedProfile;
   }

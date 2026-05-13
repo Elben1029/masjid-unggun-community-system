@@ -397,6 +397,37 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Trigger to automatically update registered count in events table
+CREATE OR REPLACE FUNCTION public.update_event_registration_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE public.events
+        SET registered = (SELECT count(*) FROM public.event_registrations WHERE event_id = NEW.event_id)
+        WHERE id = NEW.event_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE public.events
+        SET registered = (SELECT count(*) FROM public.event_registrations WHERE event_id = OLD.event_id)
+        WHERE id = OLD.event_id;
+    ELSIF TG_OP = 'UPDATE' THEN
+        IF OLD.event_id <> NEW.event_id THEN
+            UPDATE public.events
+            SET registered = (SELECT count(*) FROM public.event_registrations WHERE event_id = OLD.event_id)
+            WHERE id = OLD.event_id;
+            UPDATE public.events
+            SET registered = (SELECT count(*) FROM public.event_registrations WHERE event_id = NEW.event_id)
+            WHERE id = NEW.event_id;
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_event_registration_change ON public.event_registrations;
+CREATE TRIGGER on_event_registration_change
+    AFTER INSERT OR UPDATE OR DELETE ON public.event_registrations
+    FOR EACH ROW EXECUTE FUNCTION public.update_event_registration_count();
+
 -- ROW LEVEL SECURITY (RLS) Policies
 
 -- Enable RLS

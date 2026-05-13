@@ -53,14 +53,14 @@ export default function Dashboard() {
         const { count: pendingKorban } = await supabase.from('korban_registrations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: pendingFood } = await supabase.from('food_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: pendingAsset } = await supabase.from('asset_waqf_donations').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const { count: pendingEvents } = await supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('registration_status', 'pending');
         
-        const totalPending = (pendingDonations || 0) + (pendingKorban || 0) + (pendingFood || 0) + (pendingAsset || 0);
+        const totalPending = (pendingDonations || 0) + (pendingKorban || 0) + (pendingFood || 0) + (pendingAsset || 0) + (pendingEvents || 0);
 
         setStats([
           { label: 'Sumbangan (Disahkan)', value: `RM ${totalDonations.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
           { label: 'Acara Keseluruhan', value: eventsCount?.toLocaleString() || '0', icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
           { label: 'Pendaftaran Korban', value: korbanCount?.toLocaleString() || '0', icon: ClipboardList, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' },
-          { label: 'Aset & Inventori', value: inventoryCount?.toLocaleString() || '0', icon: Package, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
           { label: 'Kelulusan Tertunda', value: totalPending.toLocaleString(), icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
         ]);
 

@@ -4,7 +4,7 @@ import {
   DollarSign, CheckCircle, AlertCircle, Upload, FileText, 
   Tag, ShieldAlert, ArrowRight, ExternalLink, X 
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function Events() {
   const { settings } = useSettings();
   const { currentUser, currentUserProfile } = useAuth();
+  const navigate = useNavigate();
   
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState({}); // { event_id: { status, payment_status } }
@@ -117,13 +118,21 @@ export default function Events() {
 
   const handleSubmitRegistration = async (e) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser) {
+      alert("Sila log masuk atau daftar akaun terlebih dahulu untuk menyertai acara.");
+      navigate('/login');
+      return;
+    }
+    
     setSubmitting(true);
+    console.log("📅 Attempting registration for event:", selectedEvent.id);
 
     try {
       let finalProofUrl = null;
       if (selectedEvent.event_type === 'paid' && proofFile) {
+        console.log("📂 Uploading payment proof...");
         finalProofUrl = await uploadPaymentProof(proofFile);
+        console.log("✅ Proof uploaded:", finalProofUrl);
       }
 
       // Check if trying to register over quota validation
@@ -143,11 +152,14 @@ export default function Events() {
         payment_proof_url: finalProofUrl
       };
 
-      const { error } = await supabase
+      console.log("📤 Sending registration payload:", payload);
+      const { data, error } = await supabase
         .from('event_registrations')
-        .insert([payload]);
+        .insert([payload])
+        .select();
 
       if (error) {
+        console.error("❌ Registration insert error:", error);
         // If unique constraint triggers
         if (error.code === '23505') {
           alert("Anda telah pun mendaftar untuk acara ini.");
@@ -155,20 +167,19 @@ export default function Events() {
           throw error;
         }
       } else {
-        // Increment registered count
-        await supabase
-          .from('events')
-          .update({ registered: (selectedEvent.registered || 0) + 1 })
-          .eq('id', selectedEvent.id);
-
+        console.log("✅ Registration successful:", data);
+        
+        // Note: Manual update of 'events' registered count will fail for non-admins due to RLS.
+        // This should be handled by a DB trigger. We skip manual update here to prevent frontend error.
+        
         alert("Pendaftaran anda telah dihantar! Status pendaftaran boleh disemak di sini atau pada panel pengurusan profil anda.");
         fetchEvents();
         fetchUserRegistrations();
         handleCloseModal();
       }
     } catch (err) {
-      console.error("Registration error:", err);
-      alert("Gagal memproses pendaftaran. Sila cuba lagi.");
+      console.error("💥 Registration error:", err);
+      alert(`Gagal memproses pendaftaran: ${err.message || 'Sila cuba lagi.'}`);
     } finally {
       setSubmitting(false);
     }
