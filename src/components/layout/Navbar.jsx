@@ -53,9 +53,9 @@ export default function Navbar() {
                 <span className="text-white font-bold text-xl">M</span>
               )}
             </div>
-            <span className={`font-black text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-white' : 'text-white'}`}>
+            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900'}`}>
               {settings?.mosque_name || (
-                <>Masjid <span className="text-emerald-400">Unggun</span></>
+                <>Masjid <span className={scrolled ? 'text-emerald-400' : 'text-emerald-700'}>Unggun</span></>
               )}
             </span>
           </Link>
@@ -70,8 +70,8 @@ export default function Navbar() {
                   to={link.path}
                   className={`text-base font-bold transition-all duration-300 ${
                     isActive 
-                      ? 'text-emerald-400 border-b-2 border-emerald-400 pb-0.5' 
-                      : 'text-white hover:text-emerald-400'
+                      ? scrolled ? 'text-emerald-400 border-b-2 border-emerald-400 pb-0.5' : 'text-emerald-700 border-b-2 border-emerald-700 pb-0.5' 
+                      : scrolled ? 'text-slate-200 hover:text-white' : 'text-slate-900 hover:text-emerald-700'
                   }`}
                 >
                   {link.name}
@@ -87,19 +87,23 @@ export default function Navbar() {
                 <div className="relative">
                   <button 
                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold border border-white/20 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 shadow-sm"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold border shadow-sm ${
+                      scrolled 
+                        ? 'bg-slate-800/80 text-white border-slate-700 hover:bg-slate-700' 
+                        : 'bg-white text-slate-900 border-slate-200 hover:bg-slate-50'
+                    }`}
                   >
-                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xs uppercase">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs uppercase">
                       {currentUser.email ? currentUser.email[0] : 'U'}
                     </div>
                     <span>Profil</span>
                   </button>
                   
                   {isProfileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-fadeIn text-slate-900 dark:text-white">
+                    <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-fadeIn">
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                         <p className="text-xs font-semibold text-slate-400">Log masuk sebagai</p>
-                        <p className="text-sm font-black truncate">
+                        <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                           {currentUser.email || 'Pengguna'}
                         </p>
                       </div>
@@ -107,7 +111,7 @@ export default function Navbar() {
                       <Link 
                         to="/profile" 
                         onClick={() => setIsProfileDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
                       >
                         <User size={16} />
                         <span>Lihat & Edit Profil</span>
@@ -117,7 +121,7 @@ export default function Navbar() {
                         <Link 
                           to="/admin" 
                           onClick={() => setIsProfileDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
                         >
                           <ShieldAlert size={16} />
                           <span>Admin Panel</span>
@@ -131,7 +135,7 @@ export default function Navbar() {
                           setIsProfileDropdownOpen(false);
                           handleLogout();
                         }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-left"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-left"
                       >
                         <LogOut size={16} />
                         <span>Log Keluar</span>
@@ -140,7 +144,7 @@ export default function Navbar() {
                   )}
                 </div>
               ) : (
-                <Link to="/login" className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black transition-all duration-300 shadow-xl bg-emerald-600 text-white border border-emerald-500 hover:bg-emerald-500 hover:scale-105">
+                <Link to="/login" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md border ${scrolled ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500' : 'bg-slate-900 text-white border-slate-800 hover:scale-105'}`}>
                   <User size={16} />
                   <span>Log Masuk</span>
                 </Link>
@@ -148,11 +152,11 @@ export default function Navbar() {
             </div>
 
             <button
-              className="md:hidden p-2 transition-colors duration-300 text-white"
+              className={`md:hidden p-2 transition-colors duration-300 ${scrolled ? 'text-white' : 'text-slate-900'}`}
               onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle Menu"
             >
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>

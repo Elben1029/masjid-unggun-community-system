@@ -2,22 +2,22 @@ import { useState, useEffect } from 'react';
 import { 
   Calendar, Users, Image as ImageIcon, MapPin, Clock, 
   DollarSign, CheckCircle, AlertCircle, Upload, FileText, 
-  Tag, ShieldAlert, ArrowRight, ExternalLink, X, Info, Sparkles, Filter
+  Tag, ShieldAlert, ArrowRight, ExternalLink, X, ChevronRight, Info, Sparkles
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Events() {
   const { settings } = useSettings();
-  const { user: currentUser, profile: currentUserProfile } = useAuth();
+  const { currentUser, currentUserProfile } = useAuth();
   const navigate = useNavigate();
   
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState({}); // { event_id: { status, payment_status } }
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('Semua'); // 'Semua' | 'Percuma' | 'Berbayar'
+  const [filter, setFilter] = useState('Semua'); // 'Semua' | 'Percuma' | 'Berbayar'
   
   // Selected Event Modal State
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -37,8 +37,8 @@ export default function Events() {
     if (currentUser) {
       fetchUserRegistrations();
       // Pre-fill form details
-      setParticipantName(currentUserProfile?.full_name || '');
-      setPhoneNumber(currentUserProfile?.phone_number || '');
+      setParticipantName(currentUserProfile?.full_name || currentUser.email?.split('@')[0] || '');
+      setPhoneNumber(currentUserProfile?.phone_number || currentUserProfile?.phone || '');
     } else {
       setJoinedEvents({});
     }
@@ -49,7 +49,7 @@ export default function Events() {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .eq('status', 'Published') // Only show published events to public
+      .eq('status', 'Published')
       .order('date', { ascending: true });
     
     if (error) {
@@ -86,6 +86,10 @@ export default function Events() {
     setSelectedEvent(ev);
     setIsRegistering(false);
     setProofFile(null);
+    if (currentUser) {
+      setParticipantName(currentUserProfile?.full_name || currentUser.email?.split('@')[0] || '');
+      setPhoneNumber(currentUserProfile?.phone_number || currentUserProfile?.phone || '');
+    }
   };
 
   const handleCloseModal = () => {
@@ -94,183 +98,235 @@ export default function Events() {
     setProofFile(null);
   };
 
-  const handleRegister = async (e) => {
+  async function uploadPaymentProof(file) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `resit_${currentUser.id}_${Date.now()}.${fileExt}`;
+    
+    const { error } = await supabase.storage
+      .from('events')
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('events')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  }
+
+  const handleSubmitRegistration = async (e) => {
     e.preventDefault();
     if (!currentUser) {
-      alert("Sila log masuk untuk menyertai acara.");
-      navigate('/login', { state: { from: '/events' } });
+      alert("Sila log masuk atau daftar akaun terlebih dahulu untuk menyertai acara.");
+      navigate('/login');
       return;
     }
-
+    
     setSubmitting(true);
+
     try {
-      let paymentProofUrl = null;
-      
-      // If paid event, require payment proof
-      if (selectedEvent.event_type === 'Paid' && proofFile) {
-        const fileExt = proofFile.name.split('.').pop();
-        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
-        const filePath = `payments/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('event-proofs')
-          .upload(filePath, proofFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('event-proofs')
-          .getPublicUrl(filePath);
-          
-        paymentProofUrl = publicUrl;
+      let finalProofUrl = null;
+      if (selectedEvent.event_type === 'paid' && proofFile) {
+        finalProofUrl = await uploadPaymentProof(proofFile);
       }
 
-      const { error: regError } = await supabase
+      if (selectedEvent.max_participants && selectedEvent.registered >= selectedEvent.max_participants) {
+        alert("Harap maaf, kuota pendaftaran telah penuh.");
+        setSubmitting(false);
+        return;
+      }
+
+      const payload = {
+        user_id: currentUser.id,
+        event_id: selectedEvent.id,
+        participant_name: participantName,
+        phone_number: phoneNumber,
+        registration_status: 'pending',
+        payment_status: 'pending',
+        payment_proof_url: finalProofUrl
+      };
+
+      const { error } = await supabase
         .from('event_registrations')
-        .insert({
-          event_id: selectedEvent.id,
-          user_id: currentUser.id,
-          participant_name: participantName,
-          phone_number: phoneNumber,
-          payment_status: selectedEvent.event_type === 'Paid' ? 'Pending' : 'N/A',
-          registration_status: 'Pending',
-          payment_proof_url: paymentProofUrl
-        });
+        .insert([payload]);
 
-      if (regError) throw regError;
-
-      alert("Pendaftaran berjaya! Pihak kami akan mengesahkan pendaftaran anda.");
-      fetchUserRegistrations();
-      handleCloseModal();
+      if (error) {
+        if (error.code === '23505') {
+          alert("Anda telah pun mendaftar untuk acara ini.");
+        } else {
+          throw error;
+        }
+      } else {
+        alert("Pendaftaran anda telah dihantar! Status pendaftaran boleh disemak pada panel pengurusan profil anda.");
+        fetchEvents();
+        fetchUserRegistrations();
+        handleCloseModal();
+      }
     } catch (err) {
-      console.error("Registration error:", err);
-      alert("Gagal memproses pendaftaran: " + (err.message || "Sila cuba lagi."));
+      alert(`Gagal memproses pendaftaran: ${err.message || 'Sila cuba lagi.'}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredEvents = events.filter(ev => {
-    if (activeFilter === 'Semua') return true;
-    if (activeFilter === 'Percuma') return ev.event_type === 'Free';
-    if (activeFilter === 'Berbayar') return ev.event_type === 'Paid';
-    return true;
-  });
+  const filteredEvents = filter === 'Semua' 
+    ? events 
+    : filter === 'Percuma' 
+      ? events.filter(e => e.event_type !== 'paid')
+      : events.filter(e => e.event_type === 'paid');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-      {/* Premium Hero Section */}
-      <div className="relative overflow-hidden bg-[#0A2E1F] py-24 sm:py-32 mb-16">
+      {/* Hero Section */}
+      <div className="bg-slate-900 py-24 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-emerald-500 rounded-full blur-[150px] -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-teal-500 rounded-full blur-[150px] translate-x-1/2 translate-y-1/2"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500 rounded-full blur-[120px] animate-pulse delay-700"></div>
         </div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 bg-emerald-800/40 backdrop-blur-md px-6 py-2 rounded-full border border-emerald-700/50 text-emerald-200 text-sm font-bold mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-            <Calendar size={16} className="text-emerald-400" />
-            Program & Aktiviti Masjid
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 text-emerald-400 text-xs font-black uppercase tracking-widest mb-6">
+            <Sparkles size={14} />
+            Kalendar Komuniti {settings?.mosque_name || 'Masjid Unggun'}
           </div>
-          <h1 className="text-5xl sm:text-7xl font-black text-white mb-8 tracking-tight leading-[1.1]">Acara & Majlis Ilmu</h1>
-          <p className="text-emerald-100/70 text-xl sm:text-2xl max-w-3xl mx-auto font-medium leading-relaxed">
-            Sertai pelbagai program menarik yang dianjurkan oleh Masjid Unggun untuk mengukuhkan ukhuwah dan ilmu.
+          <h1 className="text-5xl sm:text-7xl font-black text-white mb-6 tracking-tight">Acara & Program</h1>
+          <p className="text-slate-400 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+            Sertai pelbagai program keilmuan, kuliah pengajian, dan aktiviti kemasyarakatan anjuran rasmi kami.
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
         {/* Filters */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-8">
-          <div className="bg-white dark:bg-slate-900 p-2 rounded-[32px] shadow-2xl flex gap-2 border border-slate-200/50 dark:border-slate-800/50 overflow-x-auto max-w-full">
-            {['Semua', 'Percuma', 'Berbayar'].map(f => (
-              <button 
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`px-10 py-4 rounded-[26px] font-black transition-all duration-500 whitespace-nowrap ${activeFilter === f ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/30 scale-105' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50'}`}
+        <div className="flex justify-center gap-2 mb-16">
+          <div className="bg-white dark:bg-slate-900 p-1.5 rounded-[24px] shadow-2xl border border-slate-200/50 dark:border-slate-800/50 flex gap-1">
+            {['Semua', 'Percuma', 'Berbayar'].map(type => (
+              <button
+                key={type}
+                onClick={() => setFilter(type)}
+                className={`px-8 py-3 rounded-[20px] text-sm font-black transition-all duration-500 ${
+                  filter === type
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
-                {f}
+                {type}
               </button>
             ))}
           </div>
-
-          <div className="flex items-center gap-4 text-slate-500 font-bold bg-white dark:bg-slate-900 px-8 py-4 rounded-[28px] shadow-xl border border-slate-100 dark:border-slate-800">
-            <Filter size={20} className="text-emerald-600" />
-            <span className="text-sm tracking-widest uppercase">Tapis Acara</span>
-          </div>
         </div>
 
-        {/* Events Grid */}
+        {/* Event Grid */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-6">
-            <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-500 font-black tracking-[0.2em] uppercase text-sm animate-pulse">Memuatkan Acara...</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-500 font-bold tracking-widest uppercase text-xs">Memuatkan Acara...</p>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-[50px] p-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 shadow-xl">
-            <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-8">
-              <Calendar className="text-slate-200" size={48} />
-            </div>
-            <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-3">Tiada Acara Dijumpai</h3>
-            <p className="text-slate-500 font-medium text-lg">Buat masa ini tiada acara bagi kategori ini. Sila semak semula nanti.</p>
+          <div className="text-center py-32 bg-white dark:bg-slate-900 rounded-[48px] border border-slate-100 dark:border-slate-800 shadow-xl">
+            <Calendar size={64} className="mx-auto text-slate-200 mb-6" />
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Tiada Acara Dijumpai</h3>
+            <p className="text-slate-500 font-medium">Sila cuba tapis kategori lain atau kembali sebentar lagi.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {filteredEvents.map(ev => {
-              const registration = joinedEvents[ev.id];
+              const isPaid = ev.event_type === 'paid';
+              const isFull = ev.max_participants && ev.registered >= ev.max_participants;
+              const isClosed = ev.registration_deadline && new Date(ev.registration_deadline) < new Date();
+              const joinedInfo = joinedEvents[ev.id];
+              const canRegister = ev.registration_enabled !== false && !isFull && !isClosed && !joinedInfo;
+
               return (
-                <div key={ev.id} className="group bg-white dark:bg-slate-900 rounded-[48px] border border-slate-100 dark:border-slate-800 shadow-xl hover:shadow-2xl hover:-translate-y-3 transition-all duration-500 overflow-hidden flex flex-col h-full border-t-0">
-                  <div className="aspect-[16/10] relative bg-slate-200 overflow-hidden">
-                    {ev.poster_url ? (
-                      <img src={ev.poster_url} alt={ev.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                <div 
+                  key={ev.id} 
+                  className="bg-white dark:bg-slate-900 rounded-[40px] overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col group"
+                >
+                  {/* Poster Area */}
+                  <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    {ev.image_url ? (
+                      <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <ImageIcon size={64} strokeWidth={1} />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600">
+                        <ImageIcon size={48} strokeWidth={1.5} className="opacity-40" />
                       </div>
                     )}
-                    <div className="absolute top-6 left-6 flex flex-col gap-2">
-                      <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl border border-white/20 ${ev.event_type === 'Paid' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}`}>
-                        {ev.event_type === 'Paid' ? `RM ${ev.price}` : 'Percuma'}
+                    
+                    {/* Badge Overlays */}
+                    <div className="absolute top-6 left-6 flex gap-2">
+                      <span className="px-4 py-1.5 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-full">
+                        {ev.category || 'Program'}
                       </span>
                     </div>
+
+                    <div className="absolute top-6 right-6">
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl border border-white/20 ${
+                        isPaid ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                      }`}>
+                        {isPaid ? `RM${ev.event_fee}` : 'Percuma'}
+                      </span>
+                    </div>
+
+                    {(isFull || isClosed) && !joinedInfo && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center">
+                        <span className="bg-rose-600 text-white px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase shadow-2xl animate-pulse">
+                          {isFull ? 'Penuh' : 'Tutup'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="p-10 flex-1 flex flex-col">
-                    <div className="mb-8">
-                      <h3 className="text-2xl font-black text-[#1E293B] dark:text-white mb-4 leading-tight group-hover:text-emerald-600 transition-colors line-clamp-2">{ev.title}</h3>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3 text-[#475569] dark:text-slate-400 font-bold text-sm">
-                          <Calendar size={16} className="text-emerald-500" />
-                          {new Date(ev.date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {/* Details Area */}
+                  <div className="p-8 flex-1 flex flex-col">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-6 group-hover:text-emerald-600 transition-colors line-clamp-2">
+                      {ev.title}
+                    </h3>
+
+                    <div className="space-y-4 mb-8">
+                      <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-700">
+                          <Calendar size={18} className="text-emerald-600" />
                         </div>
-                        <div className="flex items-center gap-3 text-[#475569] dark:text-slate-400 font-bold text-sm">
-                          <MapPin size={16} className="text-emerald-500" />
-                          {ev.location || 'Dewan Masjid Unggun'}
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Tarikh</p>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                            {ev.date ? new Date(ev.date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Akan Datang'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-700">
+                          <MapPin size={18} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Lokasi</p>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[180px]">
+                            {ev.location || 'Masjid Unggun'}
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-auto pt-8 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between gap-4">
-                      {registration ? (
-                        <div className={`flex items-center gap-2 font-black text-sm px-4 py-2 rounded-full ${
-                          registration.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                        }`}>
-                          <CheckCircle size={16} />
-                          {registration.status === 'Approved' ? 'Berdaftar' : 'Dalam Proses'}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-[#64748B] dark:text-slate-500 font-bold text-sm">
-                          <Users size={16} />
-                          {ev.capacity ? `${ev.capacity} Slot` : 'Terbuka'}
-                        </div>
-                      )}
+                    <div className="mt-auto pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Users size={16} />
+                        <span className="text-xs font-black tracking-widest uppercase">{ev.registered || 0} Terdaftar</span>
+                      </div>
                       
                       <button 
                         onClick={() => handleOpenDetails(ev)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-[20px] font-black text-sm shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-2 group/btn"
+                        className={`px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center gap-2 group/btn ${
+                          joinedInfo 
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                            : canRegister 
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20' 
+                              : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400'
+                        }`}
                       >
-                        Lihat Acara
-                        <ArrowRight size={18} className="group-hover/btn:translate-x-1.5 transition-transform" />
+                        {joinedInfo ? 'Semak Status' : canRegister ? 'Daftar Sekarang' : 'Lihat Butiran'}
+                        <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
                       </button>
                     </div>
                   </div>
@@ -281,123 +337,144 @@ export default function Events() {
         )}
       </div>
 
-      {/* Modern Event Modal */}
+      {/* EVENT DETAILS MODAL */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md overflow-y-auto pt-24 pb-12 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-[50px] shadow-3xl w-full max-w-4xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-2">
-              {/* Left: Poster & Info */}
-              <div className="relative bg-slate-100 dark:bg-slate-950">
-                {selectedEvent.poster_url ? (
-                  <img src={selectedEvent.poster_url} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full min-h-[400px] flex items-center justify-center">
-                    <ImageIcon size={80} className="text-slate-200" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-[48px] shadow-2xl w-full max-w-4xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500 my-8 flex flex-col lg:flex-row max-h-[90vh]">
+            
+            {/* Modal Image Section */}
+            <div className="lg:w-2/5 relative bg-slate-100 dark:bg-slate-800 shrink-0">
+              {selectedEvent.image_url ? (
+                <img src={selectedEvent.image_url} alt="Event" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4 p-20">
+                  <ImageIcon size={64} strokeWidth={1} />
+                  <p className="font-bold text-xs uppercase tracking-widest">Tiada Poster</p>
+                </div>
+              )}
+              <div className="absolute top-8 left-8">
+                <button onClick={handleCloseModal} className="p-4 bg-white/20 backdrop-blur-xl hover:bg-white/40 text-white rounded-full transition-all border border-white/20">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content Section */}
+            <div className="lg:w-3/5 p-10 sm:p-14 overflow-y-auto flex flex-col">
+              <div className="mb-10">
+                <span className="px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full mb-4 inline-block">
+                  {selectedEvent.category || 'Program Masjid'}
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight tracking-tight mb-6">
+                  {selectedEvent.title}
+                </h2>
+                
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tarikh & Masa</p>
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+                      <Calendar size={18} className="text-emerald-600" />
+                      {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Akan Dimaklumkan'}
+                    </div>
+                    {(selectedEvent.start_time || selectedEvent.end_time) && (
+                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mt-1 ml-6 font-medium">
+                        <Clock size={14} />
+                        {selectedEvent.start_time || 'Mula'} - {selectedEvent.end_time || 'Selesai'}
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                <div className="absolute bottom-10 left-10 right-10">
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20 mb-4 inline-block ${selectedEvent.event_type === 'Paid' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}`}>
-                    {selectedEvent.event_type === 'Paid' ? `RM ${selectedEvent.price}` : 'Kemasukan Percuma'}
-                  </span>
-                  <h2 className="text-3xl font-black text-white leading-tight">{selectedEvent.title}</h2>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Lokasi Program</p>
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+                      <MapPin size={18} className="text-emerald-600" />
+                      {selectedEvent.location || 'Masjid Unggun'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Butiran Acara</p>
+                  <p className="whitespace-pre-wrap">{selectedEvent.description || 'Tiada maklumat tambahan disediakan untuk acara ini.'}</p>
                 </div>
               </div>
 
-              {/* Right: Content & Form */}
-              <div className="p-12 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-10">
-                  <div className="flex flex-wrap gap-4">
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl flex items-center gap-3">
-                      <Calendar size={18} className="text-emerald-600" />
-                      <span className="font-black text-emerald-900 dark:text-emerald-300 text-sm">
-                        {new Date(selectedEvent.date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 px-6 py-3 rounded-2xl flex items-center gap-3">
-                      <Clock size={18} className="text-slate-400" />
-                      <span className="font-black text-slate-800 dark:text-white text-sm">{selectedEvent.time || '8:00 PM'}</span>
+              <div className="mt-auto pt-10 border-t border-slate-50 dark:border-slate-800">
+                {joinedInfo ? (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-8 rounded-[32px] border border-emerald-100 dark:border-emerald-800 flex flex-col items-center text-center gap-4">
+                    <CheckCircle2 size={48} className="text-emerald-600" />
+                    <div>
+                      <h4 className="text-xl font-black text-emerald-900 dark:text-emerald-200">Anda Sudah Terdaftar</h4>
+                      <p className="text-emerald-700/70 dark:text-emerald-400/70 font-medium text-sm mt-1">Status: <span className="font-black uppercase">{joinedInfo.status}</span></p>
                     </div>
                   </div>
-                  <button onClick={handleCloseModal} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full hover:scale-110 transition-all text-slate-400">
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <div className="flex-1 space-y-10">
-                  {!isRegistering ? (
-                    <>
-                      <div className="space-y-6">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keterangan Acara</h4>
-                        <div className="prose dark:prose-invert max-w-none text-[#334155] dark:text-slate-400 font-medium leading-relaxed">
-                          {selectedEvent.description || 'Tiada keterangan lanjut disediakan buat masa ini.'}
-                        </div>
+                ) : isRegistering ? (
+                  <form onSubmit={handleSubmitRegistration} className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Maklumat Pendaftaran</h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Penuh</label>
+                        <input type="text" required value={participantName} onChange={e => setParticipantName(e.target.value)} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold focus:border-emerald-500 outline-none transition-all" placeholder="Masukkan nama penuh" />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Telefon</label>
+                        <input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full px-6 py-4 border-2 border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold focus:border-emerald-500 outline-none transition-all" placeholder="012-3456789" />
+                      </div>
+                    </div>
 
-                      <div className="pt-6">
-                        {joinedEvents[selectedEvent.id] ? (
-                          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-8 rounded-[32px] border-2 border-emerald-100 dark:border-emerald-800 flex items-center gap-6">
-                            <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
-                              <CheckCircle className="text-emerald-500" size={32} />
-                            </div>
-                            <div>
-                              <p className="font-black text-emerald-900 dark:text-emerald-300 text-xl">Anda Sudah Berdaftar</p>
-                              <p className="text-emerald-700/60 dark:text-emerald-400/60 font-bold text-sm">Status: {joinedEvents[selectedEvent.id].status}</p>
+                    {selectedEvent.event_type === 'paid' && (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 p-8 rounded-[32px] border border-amber-100 dark:border-amber-800/50 space-y-6">
+                        <div className="flex items-center gap-4 text-amber-700 dark:text-amber-400">
+                          <DollarSign size={24} />
+                          <h4 className="font-black text-lg">Arahan Pembayaran Yuran</h4>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-center">
+                          <div className="space-y-3 text-sm">
+                            <p className="text-2xl font-black text-slate-900 dark:text-white">RM{selectedEvent.event_fee}</p>
+                            <div className="space-y-1 font-bold text-slate-600 dark:text-slate-400">
+                              <p className="flex justify-between"><span>Bank:</span> <span>{selectedEvent.bank_name || 'Maybank'}</span></p>
+                              <p className="flex justify-between"><span>No Akaun:</span> <span className="font-mono text-slate-900 dark:text-white">{selectedEvent.account_number || '1234567890'}</span></p>
+                              <p className="flex justify-between"><span>Nama:</span> <span>{selectedEvent.account_name || 'Bendahari Masjid'}</span></p>
                             </div>
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => setIsRegistering(true)}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-[28px] font-black text-xl shadow-2xl shadow-emerald-600/30 active:scale-95 transition-all flex items-center justify-center gap-4"
-                          >
-                            Daftar Sekarang
-                            <ArrowRight size={24} />
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <form onSubmit={handleRegister} className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                      <div className="space-y-6">
-                        <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Borang Pendaftaran</h4>
-                        <div className="space-y-4">
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Penuh Peserta</label>
-                          <input type="text" required value={participantName} onChange={e => setParticipantName(e.target.value)} className="w-full px-8 py-5 border-2 border-slate-50 dark:border-slate-800 rounded-[24px] bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold text-lg" />
-                        </div>
-                        <div className="space-y-4">
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nombor Telefon</label>
-                          <input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full px-8 py-5 border-2 border-slate-50 dark:border-slate-800 rounded-[24px] bg-slate-50 dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all font-bold text-lg" />
-                        </div>
-
-                        {selectedEvent.event_type === 'Paid' && (
-                          <div className="bg-amber-50 dark:bg-amber-950/20 p-8 rounded-[32px] border-2 border-amber-100 dark:border-amber-900/50 space-y-4">
-                            <div className="flex items-center gap-3 text-amber-900 dark:text-amber-300">
-                              <AlertCircle size={20} />
-                              <p className="font-bold">Sila muat naik bukti pembayaran RM {selectedEvent.price}</p>
+                          {selectedEvent.qr_code_url && (
+                            <div className="bg-white p-3 rounded-2xl shadow-xl w-32 h-32 mx-auto">
+                              <img src={selectedEvent.qr_code_url} alt="QR" className="w-full h-full object-contain" />
                             </div>
-                            <input 
-                              type="file" 
-                              required 
-                              onChange={e => setProofFile(e.target.files[0])}
-                              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-black file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200" 
-                            />
-                          </div>
-                        )}
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Sertakan Resit Pembayaran</label>
+                          <input type="file" required onChange={e => setProofFile(e.target.files[0])} className="w-full text-xs file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer" />
+                        </div>
                       </div>
+                    )}
 
-                      <div className="flex gap-4">
-                        <button type="button" onClick={() => setIsRegistering(false)} className="flex-1 py-6 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-[28px] font-black text-lg transition-all hover:bg-slate-200">Kembali</button>
-                        <button 
-                          type="submit" 
-                          disabled={submitting}
-                          className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          {submitting ? 'Memproses...' : 'Sahkan Pendaftaran'}
-                        </button>
+                    <div className="flex justify-end gap-4">
+                      <button type="button" onClick={() => setIsRegistering(false)} className="px-8 py-5 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[20px] transition-all">Batal</button>
+                      <button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700 text-white px-12 py-5 rounded-[20px] font-black transition-all shadow-xl shadow-emerald-600/20 active:scale-95 disabled:opacity-50">
+                        {submitting ? 'Sila Tunggu...' : 'Hantar Pendaftaran'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {canRegister ? (
+                      <button 
+                        onClick={() => setIsRegistering(true)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-6 rounded-[24px] font-black text-xl shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
+                      >
+                        Daftar Sebagai Peserta
+                        <ArrowRight size={24} />
+                      </button>
+                    ) : (
+                      <div className="flex-1 bg-slate-100 dark:bg-slate-800 p-8 rounded-[32px] text-center">
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Pendaftaran Tidak Tersedia</p>
                       </div>
-                    </form>
-                  )}
-                </div>
+                    )}
+                    <button onClick={handleCloseModal} className="sm:w-32 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[24px] font-black transition-all hover:scale-[1.02] active:scale-95 shadow-xl">Tutup</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
