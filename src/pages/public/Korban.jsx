@@ -75,14 +75,15 @@ export default function Korban() {
     }
   }
 
-  async function checkStatus() {
-    if (!searchIC) return;
+  async function checkStatus(searchTerm = null) {
+    const ic = searchTerm || searchIC;
+    if (!ic) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('korban_donors')
         .select('*')
-        .eq('ic_number', searchIC)
+        .eq('ic_number', ic)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -101,19 +102,32 @@ export default function Korban() {
     setLoading(true);
     try {
       const pkg = packages.find(p => p.id === selectedPkg);
+      
+      // Get current user if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .from('korban_donors')
         .insert([{
-          ...formData,
+          full_name: formData.full_name,
+          ic_number: formData.ic_number,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          beneficiary_name: formData.beneficiary_name,
+          notes: formData.notes,
           package_type: pkg.animal_type,
           shares: pkg.shares,
-          status: 'pending'
+          status: 'pending',
+          user_id: user?.id || null
         }])
         .select();
 
       if (error) throw error;
       
       alert("Pendaftaran berjaya! Sila tunggu kelulusan daripada pihak admin.");
+      const registeredIC = formData.ic_number;
+      
       setFormData({
         full_name: '',
         ic_number: '',
@@ -125,11 +139,11 @@ export default function Korban() {
       });
       setSelectedPkg(null);
       setView('status');
-      setSearchIC(formData.ic_number);
-      checkStatus();
+      setSearchIC(registeredIC);
+      checkStatus(registeredIC);
     } catch (err) {
-      console.error("Error submitting registration:", err);
-      alert("Ralat semasa pendaftaran. Sila cuba lagi.");
+      console.error("Korban Registration Error Detail:", err);
+      alert(`Ralat semasa pendaftaran: ${err.message || "Sila cuba lagi"}`);
     } finally {
       setLoading(false);
     }
