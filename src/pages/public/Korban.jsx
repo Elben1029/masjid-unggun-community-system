@@ -99,9 +99,25 @@ export default function Korban() {
     e.preventDefault();
     if (!selectedPkg) return;
     
-    setLoading(true);
     try {
       const pkg = packages.find(p => p.id === selectedPkg);
+      
+      // Basic validation
+      if (!formData.full_name || !formData.ic_number || !formData.phone) {
+        throw new Error("Sila isi semua maklumat wajib (Nama, No. K/P, No. Telefon)");
+      }
+
+      // Check for duplicate registration (Pending or Approved)
+      const { data: existing, error: checkError } = await supabase
+        .from('korban_donors')
+        .select('id')
+        .eq('ic_number', formData.ic_number)
+        .in('status', ['pending', 'approved'])
+        .maybeSingle();
+      
+      if (existing) {
+        throw new Error("No. K/P ini sudah didaftarkan. Sila semak status pendaftaran anda.");
+      }
       
       // Get current user if logged in
       const { data: { user } } = await supabase.auth.getUser();
@@ -123,7 +139,12 @@ export default function Korban() {
         }])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error("Masalah kebenaran pangkalan data (Permission Denied). Sila pastikan anda telah menjalankan SQL script terbaru di Supabase.");
+        }
+        throw error;
+      }
       
       alert("Pendaftaran berjaya! Sila tunggu kelulusan daripada pihak admin.");
       const registeredIC = formData.ic_number;

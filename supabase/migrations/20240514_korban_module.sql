@@ -69,26 +69,52 @@ ALTER TABLE public.korban_parts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.korban_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.korban_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (Idempotent)
 
 -- Donors
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Anyone can register for korban" ON public.korban_donors;
+    DROP POLICY IF EXISTS "Users can view own registrations" ON public.korban_donors;
+    DROP POLICY IF EXISTS "Admins can manage donors" ON public.korban_donors;
+END $$;
+
 CREATE POLICY "Anyone can register for korban" ON public.korban_donors FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can view own registrations" ON public.korban_donors FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 CREATE POLICY "Admins can manage donors" ON public.korban_donors FOR ALL USING (public.is_admin());
 
 -- Receivers
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Anyone can view receivers" ON public.korban_receivers;
+    DROP POLICY IF EXISTS "Admins can manage receivers" ON public.korban_receivers;
+END $$;
+
 CREATE POLICY "Anyone can view receivers" ON public.korban_receivers FOR SELECT USING (true);
 CREATE POLICY "Admins can manage receivers" ON public.korban_receivers FOR ALL USING (public.is_admin());
 
 -- Parts
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Anyone can view parts" ON public.korban_parts;
+    DROP POLICY IF EXISTS "Admins can manage parts" ON public.korban_parts;
+END $$;
+
 CREATE POLICY "Anyone can view parts" ON public.korban_parts FOR SELECT USING (true);
 CREATE POLICY "Admins can manage parts" ON public.korban_parts FOR ALL USING (public.is_admin());
 
 -- Assignments
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Anyone can view assignments" ON public.korban_assignments;
+    DROP POLICY IF EXISTS "Admins can manage assignments" ON public.korban_assignments;
+END $$;
+
 CREATE POLICY "Anyone can view assignments" ON public.korban_assignments FOR SELECT USING (true);
 CREATE POLICY "Admins can manage assignments" ON public.korban_assignments FOR ALL USING (public.is_admin());
 
 -- Logs
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Admins can view logs" ON public.korban_logs;
+    DROP POLICY IF EXISTS "Admins can insert logs" ON public.korban_logs;
+END $$;
+
 CREATE POLICY "Admins can view logs" ON public.korban_logs FOR SELECT USING (public.is_admin());
 CREATE POLICY "Admins can insert logs" ON public.korban_logs FOR INSERT WITH CHECK (public.is_admin());
 
@@ -122,6 +148,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Trigger (Idempotent)
+DROP TRIGGER IF EXISTS on_korban_assignment_change ON public.korban_assignments;
 CREATE TRIGGER on_korban_assignment_change
     AFTER INSERT OR UPDATE OR DELETE ON public.korban_assignments
     FOR EACH ROW EXECUTE FUNCTION public.update_korban_part_shares();
+
+-- Grant permissions to Supabase roles
+GRANT ALL ON TABLE public.korban_donors TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.korban_receivers TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.korban_parts TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.korban_assignments TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.korban_logs TO anon, authenticated, service_role;
