@@ -45,7 +45,7 @@ export default function Navbar() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled 
           ? 'bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-lg border-b border-slate-200/50 dark:border-slate-800/50 py-3' 
-          : 'bg-white/40 dark:bg-slate-950/40 backdrop-blur-md py-5 border-b border-white/10'
+          : 'bg-white/60 dark:bg-slate-950/60 backdrop-blur-md py-5 border-b border-white/20'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -63,7 +63,10 @@ export default function Navbar() {
               )}
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-lg sm:text-xl leading-none tracking-tight text-slate-900">
+              <span 
+                className="font-extrabold text-lg sm:text-xl leading-none tracking-tight !text-slate-950"
+                style={{ color: '#020617' }}
+              >
                 {settings?.mosque_name || 'Masjid Unggun'}
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
@@ -85,8 +88,9 @@ export default function Navbar() {
                   className={`px-4 py-2 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 relative group ${
                     isActive 
                       ? 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200' 
-                      : 'text-slate-700 hover:text-emerald-600 hover:bg-white/40'
+                      : '!text-slate-800 hover:text-emerald-600 hover:bg-white/40'
                   }`}
+                  style={!isActive ? { color: '#1e293b' } : {}}
                 >
                   {link.name}
                   {isActive && (
