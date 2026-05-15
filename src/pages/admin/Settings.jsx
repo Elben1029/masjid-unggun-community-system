@@ -34,6 +34,13 @@ export default function Settings() {
   const [misiDescription, setMisiDescription] = useState('');
   const [ctaText, setCtaText] = useState('');
 
+  // Home Page Settings
+  const [homeWelcomeText, setHomeWelcomeText] = useState('');
+  const [homeTagline, setHomeTagline] = useState('');
+  const [homeInfoTitle, setHomeInfoTitle] = useState('');
+  const [homeInfoDescription, setHomeInfoDescription] = useState('');
+  const [homeInfoImageUrl, setHomeInfoImageUrl] = useState('');
+
   // Footer Settings
   const [footerCopyright, setFooterCopyright] = useState('');
   const [footerDescription, setFooterDescription] = useState('');
@@ -65,6 +72,13 @@ export default function Settings() {
       setMisiTitle(settings.misi_title || 'Misi');
       setMisiDescription(settings.misi_description || '');
       setCtaText(settings.cta_text || 'Lihat Carta Organisasi');
+      
+      // Home Page
+      setHomeWelcomeText(settings.home_welcome_text || 'Selamat Datang');
+      setHomeTagline(settings.home_tagline || '');
+      setHomeInfoTitle(settings.home_info_title || 'Maklumat Penting');
+      setHomeInfoDescription(settings.home_info_description || '');
+      setHomeInfoImageUrl(settings.home_info_image_url || '');
       
       // Footer
       setFooterCopyright(settings.footer_copyright || '');
@@ -101,6 +115,7 @@ export default function Settings() {
       if (fieldName === 'mosque_banner') setMosqueBannerUrl(data.publicUrl);
       if (fieldName === 'qr_image') setQrImageUrl(data.publicUrl);
       if (fieldName === 'about_hero') setAboutHeroImageUrl(data.publicUrl);
+      if (fieldName === 'home_info') setHomeInfoImageUrl(data.publicUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Gagal memuat naik imej.');
@@ -136,6 +151,11 @@ export default function Settings() {
           misi_title: misiTitle,
           misi_description: misiDescription,
           cta_text: ctaText,
+          home_welcome_text: homeWelcomeText,
+          home_tagline: homeTagline,
+          home_info_title: homeInfoTitle,
+          home_info_description: homeInfoDescription,
+          home_info_image_url: homeInfoImageUrl,
           footer_copyright: footerCopyright,
           footer_description: footerDescription,
           facebook_url: facebookUrl,
@@ -297,6 +317,66 @@ export default function Settings() {
             
             <div className="md:col-span-2 pt-4 border-t border-slate-100 dark:border-slate-800">
               {renderImageUpload("QR DuitNow / Kod QR Bank", qrImageUrl, "qr_image", "Muat naik imej kod QR rasmi bank untuk memudahkan pemindahan wang.")}
+            </div>
+          </div>
+        </div>
+
+        {/* Halaman Utama */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <ImageIcon className="text-emerald-500" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Halaman Utama (Laman Depan)</h2>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teks Selamat Datang (Kecil)</label>
+                <input 
+                  type="text" 
+                  value={homeWelcomeText}
+                  onChange={(e) => setHomeWelcomeText(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                  placeholder="Cth: Selamat Datang"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tagline Hero</label>
+                <input 
+                  type="text" 
+                  value={homeTagline}
+                  onChange={(e) => setHomeTagline(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                  placeholder="Cth: Pusat ibadah dan pembangunan komuniti..."
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-white mb-4">Kad Maklumat Penting (Kiri)</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tajuk Maklumat</label>
+                  <input 
+                    type="text" 
+                    value={homeInfoTitle}
+                    onChange={(e) => setHomeInfoTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Cth: Maklumat Penting"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kandungan Maklumat</label>
+                  <textarea 
+                    rows="4"
+                    value={homeInfoDescription}
+                    onChange={(e) => setHomeInfoDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Masukkan maklumat atau pengumuman di sini..."
+                  ></textarea>
+                </div>
+                {renderImageUpload("Imej Maklumat", homeInfoImageUrl, "home_info", "Imej untuk dipaparkan di dalam kad maklumat penting.")}
+              </div>
             </div>
           </div>
         </div>

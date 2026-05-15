@@ -1,110 +1,188 @@
-import { ArrowRight, Calendar, Heart, Box } from 'lucide-react';
+import { ArrowRight, Info, Calendar, Clock, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Home() {
   const { settings } = useSettings();
+  const [latestEvent, setLatestEvent] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
+
+  useEffect(() => {
+    async function fetchLatestEvent() {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .eq('status', 'Akan Datang')
+          .order('date', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        
+        if (error) throw error;
+        setLatestEvent(data);
+      } catch (err) {
+        console.error("Error fetching latest event:", err);
+      } finally {
+        setLoadingEvent(false);
+      }
+    }
+    fetchLatestEvent();
+  }, []);
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Hero Section */}
-      <section
-        className="w-full relative py-20 lg:py-32 overflow-hidden flex flex-col items-center justify-center min-h-[80vh]"
-      >
-        {/* Banner Background with Dark Overlay for Maximum Readability */}
-        {settings?.mosque_banner_url ? (
-          <>
-            <div
-              className="absolute inset-0 z-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${settings.mosque_banner_url})` }}
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+      
+      {/* 2. HERO / BANNER SECTION (MIDDLE TIER) */}
+      <section className="relative w-full min-h-[70vh] flex flex-col items-center justify-center overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          {settings?.mosque_banner_url ? (
+            <img 
+              src={settings.mosque_banner_url} 
+              alt="Banner" 
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 z-0 bg-black/45 dark:bg-black/60 backdrop-blur-[2px]" />
-          </>
-        ) : (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-            <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-emerald-500/10 blur-[120px]" />
-            <div className="absolute top-[40%] -left-[10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[120px]" />
-          </div>
-        )}
+          ) : (
+            <div className="w-full h-full bg-emerald-900" />
+          )}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
+        </div>
 
-        <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-8">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm border mb-4 animate-fade-in ${settings?.mosque_banner_url
-            ? 'bg-black/30 backdrop-blur-md text-emerald-300 border-white/20'
-            : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50'
-            }`}>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            Sistem Pengurusan Masjid Digital
-          </div>
-
-          <h1 className={`text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] drop-shadow-sm ${settings?.mosque_banner_url ? 'text-white text-shadow' : 'text-slate-900 dark:text-white'
-            }`}>
-            Selamat Datang ke <br />
-            <span className={settings?.mosque_banner_url ? 'text-emerald-300 drop-shadow' : 'text-gradient'}>
-              {settings?.mosque_name || 'Masjid Al Huda Kampung Unggun Jaya'}
-            </span>
-          </h1>
-
-          <p className={`text-lg md:text-xl font-semibold max-w-2xl mx-auto leading-relaxed ${settings?.mosque_banner_url ? 'text-slate-100 text-shadow' : 'text-slate-700 dark:text-slate-200'
-            }`}>
-            Platform bersepadu untuk menyemak acara, mendaftar korban, dan menghulurkan sumbangan secara mudah dan selamat.
+        {/* Content */}
+        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-6">
+          <p className="text-emerald-400 font-bold tracking-[0.2em] uppercase text-sm sm:text-base animate-fade-in">
+            {settings?.home_welcome_text || 'Selamat Datang'}
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-            <Link to="/events" className="w-full sm:w-auto px-8 py-4 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-lg transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 group border border-emerald-600">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-tight tracking-tight text-shadow-md">
+            {settings?.mosque_name || 'Masjid Unggun'}
+          </h1>
+          <p className="text-lg sm:text-xl text-slate-200 max-w-2xl mx-auto font-medium text-shadow">
+            {settings?.home_tagline || 'Pusat ibadah, ilmu, dan pembangunan komuniti bertaqwa.'}
+          </p>
+          <div className="pt-8 flex flex-wrap justify-center gap-4">
+            <Link to="/events" className="px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg shadow-xl shadow-emerald-900/40 transition-all hover:scale-105 flex items-center gap-2 group">
               Lihat Acara
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link to="/donations" className="w-full sm:w-auto px-8 py-4 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-lg transition-all shadow-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center">
+            <Link to="/donations" className="px-8 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 font-bold text-lg transition-all">
               Sumbangan
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="w-full max-w-7xl mx-auto px-4 py-16 mb-20">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-          <div className="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
-              <Calendar size={28} />
+      {/* 3. CONTENT DASHBOARD SECTION (BOTTOM TIER) */}
+      <section className="w-full max-w-7xl mx-auto px-4 py-16 sm:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
+          
+          {/* LEFT COLUMN — INFO PENTING */}
+          <div className="glass-card rounded-[2.5rem] p-8 sm:p-10 flex flex-col h-full shadow-2xl border-emerald-100/20 dark:border-slate-800 transition-all duration-500 hover:shadow-emerald-500/10">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Info size={24} />
+              </div>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white">
+                {settings?.home_info_title || 'Maklumat Penting'}
+              </h2>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Acara & Program</h3>
-            <p className="text-base font-medium text-slate-700 dark:text-slate-200 leading-relaxed mb-6">
-              Ikuti perkembangan kuliah, bengkel, dan aktiviti masjid terkini. Daftar kehadiran anda secara digital.
-            </p>
-            <Link to="/events" className="text-emerald-800 dark:text-emerald-400 font-bold inline-flex items-center gap-1 hover:gap-2 transition-all">
-              Ketahui Lebih <ArrowRight size={16} />
-            </Link>
+            
+            <div className="flex-grow space-y-6">
+              {settings?.home_info_image_url && (
+                <div className="rounded-3xl overflow-hidden aspect-video shadow-md">
+                  <img src={settings.home_info_image_url} alt="Info" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                  {settings?.home_info_description || 'Selamat datang ke laman web rasmi Masjid Unggun. Laman ini memudahkan jemaah untuk menyemak jadual acara, membuat sumbangan, dan mendaftar ibadah korban secara dalam talian.'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+              <Link to="/about" className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold hover:gap-3 transition-all">
+                Ketahui lebih lanjut <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
 
-          <div className="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
-              <Heart size={28} />
+          {/* RIGHT COLUMN — PROGRAM TERKINI */}
+          <div className="flex flex-col h-full">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                  <Calendar size={20} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white">Program Terkini</h2>
+              </div>
+              <Link to="/events" className="text-sm font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                Lihat Semua
+              </Link>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Sumbangan</h3>
-            <p className="text-base font-medium text-slate-700 dark:text-slate-200 leading-relaxed mb-6">
-              Hulurkan sedekah jariah anda dengan mudah melalui perbankan dalam talian untuk pelbagai tabung masjid.
-            </p>
-            <Link to="/donations" className="text-emerald-800 dark:text-emerald-400 font-bold inline-flex items-center gap-1 hover:gap-2 transition-all">
-              Menderma <ArrowRight size={16} />
-            </Link>
-          </div>
 
-          <div className="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-700 dark:text-orange-400 mb-6">
-              <Box size={28} />
-            </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Ibadah Korban</h3>
-            <p className="text-base font-medium text-slate-700 dark:text-slate-200 leading-relaxed mb-6">
-              Pendaftaran korban kini lebih sistematik. Tempah bahagian anda lebih awal secara dalam talian.
-            </p>
-            <Link to="/korban" className="text-orange-800 dark:text-orange-400 font-bold inline-flex items-center gap-1 hover:gap-2 transition-all">
-              Daftar Sekarang <ArrowRight size={16} />
-            </Link>
+            {loadingEvent ? (
+              <div className="glass-card rounded-[2.5rem] p-12 flex items-center justify-center animate-pulse">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : latestEvent ? (
+              <Link to={`/events`} className="glass-card rounded-[2.5rem] overflow-hidden group shadow-xl hover:shadow-2xl transition-all duration-500 flex-grow flex flex-col hover:-translate-y-2 border-slate-100/50 dark:border-slate-800">
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  {latestEvent.image_url ? (
+                    <img 
+                      src={latestEvent.image_url} 
+                      alt={latestEvent.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <Calendar size={64} className="text-slate-300 dark:text-slate-700" />
+                    </div>
+                  )}
+                  <div className="absolute top-4 left-4">
+                    <span className="px-4 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg">
+                      {latestEvent.category || 'Program'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="p-8 space-y-4 flex-grow flex flex-col">
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    {latestEvent.title}
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                      <Calendar size={16} className="text-emerald-500" />
+                      <span>{new Date(latestEvent.date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                      <Clock size={16} className="text-emerald-500" />
+                      <span>{latestEvent.start_time || 'Sila rujuk detail'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm col-span-2">
+                      <MapPin size={16} className="text-emerald-500" />
+                      <span className="truncate">{latestEvent.location || 'Masjid Unggun'}</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-3 pt-4 flex-grow">
+                    {latestEvent.description}
+                  </p>
+                  
+                  <div className="pt-6 flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold group/btn">
+                    <span>Lihat Butiran</span>
+                    <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+            ) : (
+              <div className="glass-card rounded-[2.5rem] p-12 text-center space-y-4 flex-grow flex flex-col items-center justify-center border-dashed border-2">
+                <Calendar size={48} className="text-slate-300 mx-auto" />
+                <p className="text-slate-500">Tiada program akan datang buat masa ini.</p>
+              </div>
+            )}
           </div>
 
         </div>

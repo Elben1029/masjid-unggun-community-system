@@ -100,7 +100,7 @@ export default function Events() {
 
   async function uploadPaymentProof(file) {
     const fileExt = file.name.split('.').pop();
-    const fileName = `resit_${currentUser.id}_${Date.now()}.${fileExt}`;
+    const fileName = `resit_${currentUser?.id || 'guest'}_${Date.now()}.${fileExt}`;
     
     const { error } = await supabase.storage
       .from('events')
@@ -117,12 +117,6 @@ export default function Events() {
 
   const handleSubmitRegistration = async (e) => {
     e.preventDefault();
-    if (!currentUser) {
-      alert("Sila log masuk atau daftar akaun terlebih dahulu untuk menyertai acara.");
-      navigate('/login');
-      return;
-    }
-    
     setSubmitting(true);
 
     try {
@@ -158,7 +152,7 @@ export default function Events() {
           throw error;
         }
       } else {
-        alert("Pendaftaran anda telah dihantar! Status pendaftaran boleh disemak pada panel pengurusan profil anda.");
+        alert("Pendaftaran anda telah dihantar! Pihak pengurusan akan menghubungi anda untuk pengesahan.");
         fetchEvents();
         fetchUserRegistrations();
         handleCloseModal();

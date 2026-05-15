@@ -33,7 +33,12 @@ export function SettingsProvider({ children }) {
     facebook_url: '',
     instagram_url: '',
     twitter_url: '',
-    whatsapp_number: ''
+    whatsapp_number: '',
+    home_welcome_text: 'Selamat Datang',
+    home_tagline: '',
+    home_info_title: 'Maklumat Penting',
+    home_info_description: '',
+    home_info_image_url: ''
   });
   const [loading, setLoading] = useState(true);
 

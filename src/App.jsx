@@ -4,9 +4,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import PublicLayout from './layouts/PublicLayout';
 import AdminLayout from './layouts/AdminLayout';
 import Home from './pages/Home';
-import Splash from './pages/auth/Splash';
 import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
 import Events from './pages/public/Events';
 import Donations from './pages/public/Donations';
 import Korban from './pages/public/Korban';
@@ -24,7 +22,6 @@ import Settings from './pages/admin/Settings';
 // Public Pages Additional
 import PublicInventory from './pages/public/Inventory';
 import About from './pages/public/About';
-import Profile from './pages/auth/Profile';
 
 export default function App() {
   return (
@@ -32,10 +29,8 @@ export default function App() {
       <AuthProvider>
         <Router>
           <Routes>
-          {/* Auth/Standalone Routes */}
-          <Route path="/splash" element={<Splash />} />
+          {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
 
           {/* Public Routes */}
           <Route element={<PublicLayout />}>
@@ -45,11 +40,6 @@ export default function App() {
             <Route path="/korban" element={<Korban />} />
             <Route path="/inventory" element={<PublicInventory />} />
             <Route path="/about" element={<About />} />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
           </Route>
 
           {/* Admin Routes */}
