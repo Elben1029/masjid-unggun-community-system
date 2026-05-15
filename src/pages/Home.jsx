@@ -1,4 +1,5 @@
-import { Info, Calendar, Clock, MapPin } from 'lucide-react';
+import { ArrowRight, Info, Calendar, Clock, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
