@@ -15,9 +15,7 @@ export default function Navbar() {
   const { currentUser, logout } = useAuth();
 
   useEffect(() => {
-    console.log("Navbar Mounted");
     const handleScroll = () => {
-      console.log("Scrolling...", window.scrollY);
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
@@ -44,11 +42,7 @@ export default function Navbar() {
 
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled 
-          ? 'bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-lg border-b border-slate-200/50 dark:border-slate-800/50 py-3' 
-          : 'bg-white/60 dark:bg-slate-950/60 backdrop-blur-md py-5 border-b border-white/20'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-slate-950 shadow-2xl py-4 border-b border-white/5`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-8">
@@ -65,15 +59,10 @@ export default function Navbar() {
               )}
             </div>
             <div className="flex flex-col">
-              <span 
-                className="font-extrabold text-lg sm:text-xl leading-none tracking-tight !text-red-600"
-                style={{ color: 'red', fontWeight: 'bold' }}
-              >
-                {settings?.mosque_name || 'Masjid Unggun'} (VERIFIED)
+              <span className="font-extrabold text-lg sm:text-xl leading-none tracking-tight text-white">
+                {settings?.mosque_name || 'Masjid Unggun'}
               </span>
-              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
-                scrolled ? 'text-emerald-700' : 'text-emerald-600'
-              }`}>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1 text-emerald-400">
                 JawatanKuasa Masjid
               </span>
             </div>
@@ -89,10 +78,9 @@ export default function Navbar() {
                   to={link.path}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 relative group ${
                     isActive 
-                      ? 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200' 
-                      : '!text-slate-800 hover:text-emerald-600 hover:bg-white/40'
+                      ? 'text-emerald-400 bg-emerald-950/50 ring-1 ring-emerald-500/30' 
+                      : 'text-white/80 hover:text-white hover:bg-white/5'
                   }`}
-                  style={!isActive ? { color: '#1e293b' } : {}}
                 >
                   {link.name}
                   {isActive && (
@@ -110,22 +98,14 @@ export default function Navbar() {
               {currentUser ? (
                 <button 
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
-                    scrolled 
-                      ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300' 
-                      : 'bg-white/40 backdrop-blur-md border-slate-200 text-slate-800 shadow-sm'
-                  }`}
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
                   <User size={18} />
                 </button>
               ) : (
                 <Link 
                   to="/login"
-                  className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
-                    scrolled 
-                      ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600' 
-                      : 'bg-white/40 backdrop-blur-md border-slate-200 text-slate-800 hover:bg-white'
-                  }`}
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
                   <User size={18} />
                 </Link>
@@ -158,11 +138,7 @@ export default function Navbar() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className={`lg:hidden w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
-                scrolled 
-                  ? 'bg-slate-900 text-white border-slate-800' 
-                  : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900'
-              }`}
+              className="lg:hidden w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
