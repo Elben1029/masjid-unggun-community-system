@@ -63,9 +63,7 @@ export default function Navbar() {
               )}
             </div>
             <div className="flex flex-col">
-              <span className={`font-black text-lg sm:text-xl leading-none tracking-tight transition-colors duration-500 ${
-                scrolled ? 'text-slate-900 dark:text-white' : 'text-slate-900 dark:text-white'
-              }`}>
+              <span className="font-black text-lg sm:text-xl leading-none tracking-tight text-slate-950">
                 {settings?.mosque_name || 'Masjid Unggun'}
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
@@ -86,8 +84,8 @@ export default function Navbar() {
                   to={link.path}
                   className={`px-4 py-2 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 relative group ${
                     isActive 
-                      ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/40 ring-1 ring-emerald-200 dark:ring-emerald-800' 
-                      : 'text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:bg-white/50 dark:hover:bg-slate-800'
+                      ? 'text-emerald-800 bg-emerald-100 ring-1 ring-emerald-300' 
+                      : 'text-slate-800 hover:text-emerald-700 hover:bg-white/60 shadow-sm hover:shadow'
                   }`}
                 >
                   {link.name}
