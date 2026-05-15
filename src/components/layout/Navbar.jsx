@@ -44,8 +44,8 @@ export default function Navbar() {
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled 
-          ? 'bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl shadow-lg border-b border-slate-200/50 dark:border-slate-800/50 py-3' 
-          : 'bg-transparent py-6'
+          ? 'bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-lg border-b border-slate-200/50 dark:border-slate-800/50 py-3' 
+          : 'bg-white/40 dark:bg-slate-950/40 backdrop-blur-md py-5 border-b border-white/10'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -53,8 +53,8 @@ export default function Navbar() {
           
           {/* 1. BRANDING (Logo + Title) */}
           <Link to="/" className="flex items-center gap-4 group shrink-0">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-500 overflow-hidden ${
-              scrolled ? 'bg-emerald-600 scale-90' : 'bg-white/10 backdrop-blur-md border border-white/20'
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 overflow-hidden ${
+              scrolled ? 'bg-emerald-600 scale-90' : 'bg-slate-900 scale-100'
             }`}>
               {settings?.mosque_logo_url ? (
                 <img src={settings.mosque_logo_url} alt="Logo" className="w-full h-full object-cover" />
@@ -64,12 +64,12 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col">
               <span className={`font-black text-lg sm:text-xl leading-none tracking-tight transition-colors duration-500 ${
-                scrolled ? 'text-slate-900 dark:text-white' : 'text-white drop-shadow-lg'
+                scrolled ? 'text-slate-900 dark:text-white' : 'text-slate-900 dark:text-white'
               }`}>
                 {settings?.mosque_name || 'Masjid Unggun'}
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
-                scrolled ? 'text-emerald-600' : 'text-emerald-400'
+                scrolled ? 'text-emerald-700' : 'text-emerald-600'
               }`}>
                 JawatanKuasa Masjid
               </span>
@@ -84,21 +84,15 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 relative group ${
+                  className={`px-4 py-2 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 relative group ${
                     isActive 
-                      ? scrolled 
-                        ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' 
-                        : 'text-white bg-white/20'
-                      : scrolled 
-                        ? 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800' 
-                        : 'text-white/80 hover:text-white hover:bg-white/10'
+                      ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/40 ring-1 ring-emerald-200 dark:ring-emerald-800' 
+                      : 'text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:bg-white/50 dark:hover:bg-slate-800'
                   }`}
                 >
                   {link.name}
                   {isActive && (
-                    <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${
-                      scrolled ? 'bg-emerald-500' : 'bg-white'
-                    }`}></span>
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                   )}
                 </Link>
               );
@@ -115,7 +109,7 @@ export default function Navbar() {
                   className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
                     scrolled 
                       ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300' 
-                      : 'bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20'
+                      : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900'
                   }`}
                 >
                   <User size={20} />
@@ -126,7 +120,7 @@ export default function Navbar() {
                   className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
                     scrolled 
                       ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600' 
-                      : 'bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20'
+                      : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900 hover:bg-white'
                   }`}
                 >
                   <User size={20} />
@@ -163,7 +157,7 @@ export default function Navbar() {
               className={`lg:hidden w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
                 scrolled 
                   ? 'bg-slate-900 text-white border-slate-800' 
-                  : 'bg-white/10 backdrop-blur-md border-white/20 text-white'
+                  : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900'
               }`}
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
