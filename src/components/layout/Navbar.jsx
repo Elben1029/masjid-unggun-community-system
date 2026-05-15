@@ -63,7 +63,7 @@ export default function Navbar() {
               )}
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-lg sm:text-xl leading-none tracking-tight text-slate-950">
+              <span className="font-extrabold text-lg sm:text-xl leading-none tracking-tight text-slate-900">
                 {settings?.mosque_name || 'Masjid Unggun'}
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
@@ -82,10 +82,10 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 relative group ${
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 relative group ${
                     isActive 
-                      ? 'text-emerald-800 bg-emerald-100 ring-1 ring-emerald-300' 
-                      : 'text-slate-800 hover:text-emerald-700 hover:bg-white/60 shadow-sm hover:shadow'
+                      ? 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200' 
+                      : 'text-slate-700 hover:text-emerald-600 hover:bg-white/40'
                   }`}
                 >
                   {link.name}
@@ -104,24 +104,24 @@ export default function Navbar() {
               {currentUser ? (
                 <button 
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
                     scrolled 
                       ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300' 
-                      : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900'
+                      : 'bg-white/40 backdrop-blur-md border-slate-200 text-slate-800 shadow-sm'
                   }`}
                 >
-                  <User size={20} />
+                  <User size={18} />
                 </button>
               ) : (
                 <Link 
                   to="/login"
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border ${
                     scrolled 
                       ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600' 
-                      : 'bg-white/60 backdrop-blur-md border-slate-200 text-slate-900 hover:bg-white'
+                      : 'bg-white/40 backdrop-blur-md border-slate-200 text-slate-800 hover:bg-white'
                   }`}
                 >
-                  <User size={20} />
+                  <User size={18} />
                 </Link>
               )}
 
