@@ -15,7 +15,9 @@ export default function Navbar() {
   const { currentUser, logout } = useAuth();
 
   useEffect(() => {
+    console.log("Navbar Mounted");
     const handleScroll = () => {
+      console.log("Scrolling...", window.scrollY);
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
@@ -64,10 +66,10 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col">
               <span 
-                className="font-extrabold text-lg sm:text-xl leading-none tracking-tight !text-slate-950"
-                style={{ color: '#020617' }}
+                className="font-extrabold text-lg sm:text-xl leading-none tracking-tight !text-red-600"
+                style={{ color: 'red', fontWeight: 'bold' }}
               >
-                {settings?.mosque_name || 'Masjid Unggun'}
+                {settings?.mosque_name || 'Masjid Unggun'} (VERIFIED)
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-500 ${
                 scrolled ? 'text-emerald-700' : 'text-emerald-600'
