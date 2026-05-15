@@ -24,6 +24,24 @@ export default function Settings() {
   const [mosqueBannerUrl, setMosqueBannerUrl] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
 
+  // About Page Settings
+  const [aboutHeroImageUrl, setAboutHeroImageUrl] = useState('');
+  const [aboutHeroTitle, setAboutHeroTitle] = useState('');
+  const [aboutHeroDescription, setAboutHeroDescription] = useState('');
+  const [visiTitle, setVisiTitle] = useState('');
+  const [visiDescription, setVisiDescription] = useState('');
+  const [misiTitle, setMisiTitle] = useState('');
+  const [misiDescription, setMisiDescription] = useState('');
+  const [ctaText, setCtaText] = useState('');
+
+  // Footer Settings
+  const [footerCopyright, setFooterCopyright] = useState('');
+  const [footerDescription, setFooterDescription] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+
   useEffect(() => {
     if (!settingsLoading && settings) {
       setMosqueName(settings.mosque_name || '');
@@ -37,6 +55,24 @@ export default function Settings() {
       setMosqueLogoUrl(settings.mosque_logo_url || '');
       setMosqueBannerUrl(settings.mosque_banner_url || '');
       setQrImageUrl(settings.qr_image_url || settings.qr_code_url || '');
+      
+      // About Page
+      setAboutHeroImageUrl(settings.about_hero_image_url || '');
+      setAboutHeroTitle(settings.about_hero_title || 'Tentang Kami');
+      setAboutHeroDescription(settings.about_hero_description || '');
+      setVisiTitle(settings.visi_title || 'Visi');
+      setVisiDescription(settings.visi_description || '');
+      setMisiTitle(settings.misi_title || 'Misi');
+      setMisiDescription(settings.misi_description || '');
+      setCtaText(settings.cta_text || 'Lihat Carta Organisasi');
+      
+      // Footer
+      setFooterCopyright(settings.footer_copyright || '');
+      setFooterDescription(settings.footer_description || '');
+      setFacebookUrl(settings.facebook_url || '');
+      setInstagramUrl(settings.instagram_url || '');
+      setTwitterUrl(settings.twitter_url || '');
+      setWhatsappNumber(settings.whatsapp_number || '');
     }
   }, [settings, settingsLoading]);
 
@@ -64,6 +100,7 @@ export default function Settings() {
       if (fieldName === 'mosque_logo') setMosqueLogoUrl(data.publicUrl);
       if (fieldName === 'mosque_banner') setMosqueBannerUrl(data.publicUrl);
       if (fieldName === 'qr_image') setQrImageUrl(data.publicUrl);
+      if (fieldName === 'about_hero') setAboutHeroImageUrl(data.publicUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Gagal memuat naik imej.');
@@ -91,6 +128,20 @@ export default function Settings() {
           mosque_logo_url: mosqueLogoUrl,
           mosque_banner_url: mosqueBannerUrl,
           qr_image_url: qrImageUrl,
+          about_hero_image_url: aboutHeroImageUrl,
+          about_hero_title: aboutHeroTitle,
+          about_hero_description: aboutHeroDescription,
+          visi_title: visiTitle,
+          visi_description: visiDescription,
+          misi_title: misiTitle,
+          misi_description: misiDescription,
+          cta_text: ctaText,
+          footer_copyright: footerCopyright,
+          footer_description: footerDescription,
+          facebook_url: facebookUrl,
+          instagram_url: instagramUrl,
+          twitter_url: twitterUrl,
+          whatsapp_number: whatsappNumber,
           updated_at: new Date().toISOString()
         });
       
@@ -246,6 +297,173 @@ export default function Settings() {
             
             <div className="md:col-span-2 pt-4 border-t border-slate-100 dark:border-slate-800">
               {renderImageUpload("QR DuitNow / Kod QR Bank", qrImageUrl, "qr_image", "Muat naik imej kod QR rasmi bank untuk memudahkan pemindahan wang.")}
+            </div>
+          </div>
+        </div>
+
+        {/* About Page & Footer */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Info className="text-emerald-500" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Halaman Tentang Kami & Footer</h2>
+          </div>
+          
+          <div className="space-y-8">
+            {/* Hero Section */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">1</span>
+                Hero Section (Bahagian Atas)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tajuk Hero</label>
+                  <input 
+                    type="text" 
+                    value={aboutHeroTitle}
+                    onChange={(e) => setAboutHeroTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Tentang Kami"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Penerangan Hero</label>
+                  <textarea 
+                    rows="2"
+                    value={aboutHeroDescription}
+                    onChange={(e) => setAboutHeroDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Penerangan ringkas di bawah tajuk..."
+                  ></textarea>
+                </div>
+                <div className="md:col-span-2">
+                  {renderImageUpload("Imej Hero", aboutHeroImageUrl, "about_hero", "Imej yang dipaparkan di sebelah teks (50/50 split).")}
+                </div>
+              </div>
+            </div>
+
+            {/* Visi & Misi */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">2</span>
+                Visi & Misi
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Bahagian Visi</h4>
+                  <input 
+                    type="text" 
+                    value={visiTitle}
+                    onChange={(e) => setVisiTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold" 
+                    placeholder="Tajuk (Visi)"
+                  />
+                  <textarea 
+                    rows="3"
+                    value={visiDescription}
+                    onChange={(e) => setVisiDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Kandungan visi..."
+                  ></textarea>
+                </div>
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Bahagian Misi</h4>
+                  <input 
+                    type="text" 
+                    value={misiTitle}
+                    onChange={(e) => setMisiTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold" 
+                    placeholder="Tajuk (Misi)"
+                  />
+                  <textarea 
+                    rows="3"
+                    value={misiDescription}
+                    onChange={(e) => setMisiDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Kandungan misi..."
+                  ></textarea>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teks Butang CTA (Bawah Visi/Misi)</label>
+                <input 
+                  type="text" 
+                  value={ctaText}
+                  onChange={(e) => setCtaText(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                  placeholder="Lihat Carta Organisasi"
+                />
+              </div>
+            </div>
+
+            {/* Footer Section */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">3</span>
+                Footer (Bahagian Bawah Laman)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Penerangan Ringkas Footer</label>
+                  <textarea 
+                    rows="2"
+                    value={footerDescription}
+                    onChange={(e) => setFooterDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="Ayat ringkas di bawah logo di footer..."
+                  ></textarea>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teks Hak Cipta (Copyright)</label>
+                  <input 
+                    type="text" 
+                    value={footerCopyright}
+                    onChange={(e) => setFooterCopyright(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="© 2024 Masjid Unggun. Hak Cipta Terpelihara."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Facebook URL</label>
+                  <input 
+                    type="url" 
+                    value={facebookUrl}
+                    onChange={(e) => setFacebookUrl(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="https://facebook.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instagram URL</label>
+                  <input 
+                    type="url" 
+                    value={instagramUrl}
+                    onChange={(e) => setInstagramUrl(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="https://instagram.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Twitter URL</label>
+                  <input 
+                    type="url" 
+                    value={twitterUrl}
+                    onChange={(e) => setTwitterUrl(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="https://twitter.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">WhatsApp (No. Telefon)</label>
+                  <input 
+                    type="text" 
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
+                    placeholder="60123456789"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

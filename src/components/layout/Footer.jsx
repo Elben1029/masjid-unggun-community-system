@@ -27,15 +27,39 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
-              Pusat ibadah dan kemasyarakatan yang komprehensif, menguruskan acara, sumbangan, dan kebajikan jemaah.
+              {settings?.footer_description || 'Pusat ibadah dan kemasyarakatan yang komprehensif, menguruskan acara, sumbangan, dan kebajikan jemaah.'}
             </p>
             <div className="flex items-center gap-4 pt-2">
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
-                <Globe size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
-                <MessageCircle size={18} />
-              </a>
+              {settings?.facebook_url && (
+                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                  <Globe size={18} />
+                </a>
+              )}
+              {settings?.instagram_url && (
+                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                  <Globe size={18} />
+                </a>
+              )}
+              {settings?.twitter_url && (
+                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                  <Globe size={18} />
+                </a>
+              )}
+              {settings?.whatsapp_number && (
+                <a href={`https://wa.me/${settings.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                  <MessageCircle size={18} />
+                </a>
+              )}
+              {!settings?.facebook_url && !settings?.instagram_url && !settings?.twitter_url && !settings?.whatsapp_number && (
+                <>
+                  <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                    <Globe size={18} />
+                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors">
+                    <MessageCircle size={18} />
+                  </a>
+                </>
+              )}
             </div>
           </div>
 
@@ -82,7 +106,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} {settings?.mosque_name || 'Masjid Unggun'} Management System. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {settings?.footer_copyright || `${settings?.mosque_name || 'Masjid Unggun'} Management System. All rights reserved.`}</p>
           <div className="flex gap-4">
             <Link to="/privacy" className="hover:text-slate-300">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-300">Terms of Service</Link>

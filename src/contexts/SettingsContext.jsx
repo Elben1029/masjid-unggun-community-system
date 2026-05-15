@@ -17,7 +17,23 @@ export function SettingsProvider({ children }) {
     mosque_logo_url: '',
     mosque_banner_url: '',
     qr_image_url: '',
-    qr_code_url: ''
+    qr_code_url: '',
+    about_hero_image_url: '',
+    about_hero_title: 'Tentang Kami',
+    about_hero_description: '',
+    visi_title: 'Visi',
+    visi_description: '',
+    visi_icon: '',
+    misi_title: 'Misi',
+    misi_description: '',
+    misi_icon: '',
+    cta_text: 'Lihat Carta Organisasi',
+    footer_copyright: '',
+    footer_description: '',
+    facebook_url: '',
+    instagram_url: '',
+    twitter_url: '',
+    whatsapp_number: ''
   });
   const [loading, setLoading] = useState(true);
 
