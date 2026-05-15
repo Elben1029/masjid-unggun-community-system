@@ -63,7 +63,7 @@ export default function Navbar() {
                 {settings?.mosque_name || 'Masjid Unggun'}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1 text-emerald-400">
-                JawatanKuasa Masjid
+                
               </span>
             </div>
           </Link>
