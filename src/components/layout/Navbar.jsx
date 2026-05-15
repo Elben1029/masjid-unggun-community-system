@@ -53,7 +53,7 @@ export default function Navbar() {
                 <span className="text-white font-bold text-xl">M</span>
               )}
             </div>
-            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-slate-900 dark:text-white' : 'text-slate-900 dark:text-white'}`}>
+            <span className={`font-extrabold text-2xl tracking-tighter transition-colors duration-500 ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white drop-shadow-md'}`}>
               {settings?.mosque_name || 'Masjid Unggun'}
             </span>
           </Link>
@@ -64,7 +64,11 @@ export default function Navbar() {
               <div className="relative">
                 <button 
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-all shadow-sm"
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border transition-all shadow-lg ${
+                    scrolled 
+                    ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
+                    : 'bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white/20'
+                  }`}
                 >
                   <User size={20} />
                 </button>
@@ -103,37 +107,43 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link to="/login" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 transition-all shadow-sm">
+              <Link to="/login" className={`w-11 h-11 rounded-full flex items-center justify-center border transition-all shadow-lg ${
+                scrolled 
+                ? 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50' 
+                : 'bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white/20'
+              }`}>
                 <User size={20} />
               </Link>
             )}
 
             {/* Mobile Toggle */}
             <button
-              className="md:hidden p-2 text-slate-900 dark:text-white"
+              className={`md:hidden p-2 transition-colors ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white'}`}
               onClick={() => setIsOpen(!isOpen)}
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
 
         {/* BOTTOM TIER: Navigation Bar */}
-        <nav className="hidden md:flex items-center justify-center gap-8 py-2 border-t border-slate-100 dark:border-slate-800/50">
+        <nav className={`hidden md:flex items-center justify-center gap-10 py-3 border-t transition-colors duration-500 ${scrolled ? 'border-slate-100 dark:border-slate-800/50' : 'border-white/10'}`}>
           {navLinks.map((link) => {
             const isActive = location.pathname === link.path;
             return (
               <Link
                 key={link.name}
                 to={link.path}
-                className={`text-sm font-bold transition-all duration-300 relative py-1 group ${
+                className={`text-[15px] font-black transition-all duration-300 relative py-1.5 tracking-wide group ${
                   isActive 
-                    ? 'text-emerald-600 dark:text-emerald-400' 
-                    : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
+                    ? scrolled ? 'text-emerald-700 dark:text-emerald-400' : 'text-white'
+                    : scrolled 
+                      ? 'text-slate-800 dark:text-slate-300 hover:text-emerald-600' 
+                      : 'text-white/80 hover:text-white'
                 }`}
               >
                 {link.name}
-                <span className={`absolute bottom-0 left-0 h-0.5 bg-emerald-500 transition-all duration-300 ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                <span className={`absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300 rounded-full ${isActive ? 'w-full' : 'w-0 group-hover:w-full'} ${!scrolled && isActive ? 'bg-white' : ''}`}></span>
               </Link>
             );
           })}
