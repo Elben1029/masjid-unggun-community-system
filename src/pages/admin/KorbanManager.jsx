@@ -132,11 +132,18 @@ export default function KorbanManager() {
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
     
+    // Parse numeric values to avoid type errors
+    if (data.price) data.price = parseFloat(data.price);
+    if (data.shares) data.shares = parseInt(data.shares, 10);
+    if (data.quota) data.quota = parseInt(data.quota, 10);
+    
     try {
       if (selectedItem) {
         const { error } = await supabase.from('korban_packages').update(data).eq('id', selectedItem.id);
         if (error) throw error;
       } else {
+        // Set initial available_quota same as quota for new packages
+        data.available_quota = data.quota || 0;
         const { error } = await supabase.from('korban_packages').insert([data]);
         if (error) throw error;
       }
@@ -144,7 +151,7 @@ export default function KorbanManager() {
       fetchData();
     } catch (err) {
       console.error(err);
-      alert("Ralat menyimpan pakej.");
+      alert(`Ralat menyimpan pakej: ${err.message}`);
     }
   };
 
@@ -492,15 +499,15 @@ export default function KorbanManager() {
       {/* Package Form Modal */}
       {isModalOpen && modalType === 'package' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-lg border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-lg border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                 {selectedItem ? 'Kemaskini Pakej' : 'Tambah Pakej Baru'}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600"><X size={24} /></button>
             </div>
             
-            <form onSubmit={savePackage} className="p-8 space-y-6">
+            <form onSubmit={savePackage} className="p-8 space-y-6 overflow-y-auto">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nama Pakej</label>
                 <input name="name" defaultValue={selectedItem?.name} required className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-purple-500 outline-none dark:text-white" />
