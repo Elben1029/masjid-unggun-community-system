@@ -613,3 +613,96 @@ CREATE POLICY "Admin Delete for settings" ON storage.objects FOR DELETE USING (b
 
 -- Force PostgREST to reload schema and recognize new foreign keys
 NOTIFY pgrst, 'reload schema';
+
+-- ==========================================
+-- NEW KORBAN MANAGEMENT SYSTEM V2
+-- ==========================================
+
+-- 1. Korban Packages
+CREATE TABLE IF NOT EXISTS public.korban_packages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    animal_type TEXT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    shares INTEGER NOT NULL,
+    description TEXT,
+    quota INTEGER DEFAULT 0,
+    available_quota INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Korban Bookings
+CREATE TABLE IF NOT EXISTS public.korban_bookings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.profiles(id),
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status TEXT DEFAULT 'pending', -- pending, completed, cancelled
+    payment_status TEXT DEFAULT 'Pending Verification', -- Pending Verification, Verified, Rejected, Completed
+    receipt_url TEXT,
+    reference_number TEXT,
+    payment_notes TEXT,
+    verified_at TIMESTAMPTZ,
+    verified_by UUID REFERENCES public.profiles(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Korban Payers
+CREATE TABLE IF NOT EXISTS public.korban_payers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id UUID REFERENCES public.korban_bookings(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT NOT NULL,
+    address TEXT NOT NULL,
+    next_of_kin TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. Korban Participants
+CREATE TABLE IF NOT EXISTS public.korban_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id UUID REFERENCES public.korban_bookings(id) ON DELETE CASCADE,
+    package_id UUID REFERENCES public.korban_packages(id),
+    participant_name TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for new Korban tables
+ALTER TABLE public.korban_packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.korban_bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.korban_payers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.korban_participants ENABLE ROW LEVEL SECURITY;
+
+-- Packages Policies
+CREATE POLICY "Anyone can view packages" ON public.korban_packages FOR SELECT USING (true);
+CREATE POLICY "Admins can manage packages" ON public.korban_packages FOR ALL USING (public.is_admin());
+
+-- Bookings Policies
+CREATE POLICY "Users can view own bookings" ON public.korban_bookings FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Anyone can create bookings" ON public.korban_bookings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update own bookings" ON public.korban_bookings FOR UPDATE USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Admins can manage bookings" ON public.korban_bookings FOR ALL USING (public.is_admin());
+
+-- Payers Policies
+CREATE POLICY "Anyone can view own payers" ON public.korban_payers FOR SELECT USING (true); -- simplify for registration flow
+CREATE POLICY "Anyone can create payers" ON public.korban_payers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can manage payers" ON public.korban_payers FOR ALL USING (public.is_admin());
+
+-- Participants Policies
+CREATE POLICY "Anyone can view own participants" ON public.korban_participants FOR SELECT USING (true); -- simplify for registration flow
+CREATE POLICY "Anyone can create participants" ON public.korban_participants FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can manage participants" ON public.korban_participants FOR ALL USING (public.is_admin());
+
+-- Insert default packages
+INSERT INTO public.korban_packages (name, animal_type, price, shares, description, quota, available_quota) VALUES
+('1 Bahagian Lembu', 'Lembu', 850.00, 1, 'Satu bahagian daripada 7 bahagian lembu.', 70, 70),
+('1 Ekor Lembu', 'Lembu', 5950.00, 7, 'Satu ekor lembu (7 bahagian).', 7, 7),
+('1 Ekor Kambing', 'Kambing', 1100.00, 1, 'Satu ekor kambing.', 50, 50)
+ON CONFLICT DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';

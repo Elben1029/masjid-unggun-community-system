@@ -61,15 +61,7 @@ export default function Home() {
           <p className="text-lg sm:text-xl text-slate-200 max-w-2xl mx-auto font-medium text-shadow">
             {settings?.home_tagline || 'Pusat ibadah, ilmu, dan pembangunan komuniti bertaqwa.'}
           </p>
-          <div className="pt-8 flex flex-wrap justify-center gap-4">
-            <Link to="/events" className="px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg shadow-xl shadow-emerald-900/40 transition-all hover:scale-105 flex items-center gap-2 group">
-              Lihat Acara
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link to="/donations" className="px-8 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 font-bold text-lg transition-all">
-              Sumbangan
-            </Link>
-          </div>
+
         </div>
       </section>
 

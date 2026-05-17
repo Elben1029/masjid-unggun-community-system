@@ -1,502 +1,631 @@
-import { Check, Info, Box, Users, Search, Clock, ShieldCheck, MapPin, User, Phone, Mail, FileText, ChevronRight, AlertCircle, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
-
-const packages = [
-  {
-    id: 'lembu_bahagian',
-    name: '1 Bahagian Lembu',
-    animal_type: 'Lembu',
-    price: 850,
-    shares: 1,
-    description: 'Satu bahagian daripada 7 bahagian lembu.'
-  },
-  {
-    id: 'lembu_ekor',
-    name: '1 Ekor Lembu',
-    animal_type: 'Lembu',
-    price: 5950,
-    shares: 7,
-    description: 'Satu ekor lembu (7 bahagian).'
-  },
-  {
-    id: 'kambing_ekor',
-    name: '1 Ekor Kambing',
-    animal_type: 'Kambing',
-    price: 1100,
-    shares: 1,
-    description: 'Satu ekor kambing.'
-  }
-];
+import { 
+  Box, Users, Check, ChevronRight, ChevronLeft, Info, FileText, Upload,
+  Phone, Mail, MapPin, User, ShieldCheck, Heart, Trash2, Search, CreditCard
+} from 'lucide-react';
 
 export default function Korban() {
   const { settings } = useSettings();
-  const [view, setView] = useState('register'); // 'register', 'list', 'status'
-  const [selectedPkg, setSelectedPkg] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [parts, setParts] = useState([]);
-  const [searchIC, setSearchIC] = useState('');
-  const [statusResult, setStatusResult] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-  // Form State
-  const [formData, setFormData] = useState({
+  // Steps: 1 (Booking), 2 (Payer Details), 3 (Payment & Akad), 4 (Success)
+  const [step, setStep] = useState(1);
+
+  // Cart / Booking items
+  const [cart, setCart] = useState([]); // { package_id, quantity, participants: ['Name 1', 'Name 2'] }
+
+  // Payer Details
+  const [payer, setPayer] = useState({
     full_name: '',
-    ic_number: '',
-    phone: '',
     email: '',
+    phone: '',
+    country_code: '+60',
     address: '',
-    beneficiary_name: '',
-    notes: ''
+    next_of_kin: ''
   });
 
+  // Payment Details
+  const [payment, setPayment] = useState({
+    receipt_file: null,
+    reference_number: '',
+    agree_tnc: false,
+    agree_akad: false
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (view === 'list') {
-      fetchKorbanList();
-    }
-  }, [view]);
+    fetchPackages();
+  }, []);
 
-  async function fetchKorbanList() {
+  async function fetchPackages() {
     try {
-      const { data, error } = await supabase
-        .from('korban_parts')
-        .select(`
-          *,
-          assignments:korban_assignments(
-            donor:korban_donors(full_name)
-          )
-        `)
-        .order('part_number', { ascending: true });
-      
+      const { data, error } = await supabase.from('korban_packages').select('*').eq('status', 'active');
       if (error) throw error;
-      setParts(data || []);
+      setPackages(data || []);
     } catch (err) {
-      console.error("Error fetching korban list:", err);
-    }
-  }
-
-  async function checkStatus(searchTerm = null) {
-    const ic = searchTerm || searchIC;
-    if (!ic) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('korban_donors')
-        .select('*')
-        .eq('ic_number', ic)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setStatusResult(data || []);
-    } catch (err) {
-      console.error("Error checking status:", err);
+      console.error('Error fetching packages', err);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!selectedPkg) return;
+  // Helper functions
+  const totalAmount = cart.reduce((acc, item) => {
+    const pkg = packages.find(p => p.id === item.package_id);
+    return acc + ((pkg?.price || 0) * item.quantity);
+  }, 0);
+
+  const handleAddToCart = (pkg) => {
+    setCart([...cart, {
+      package_id: pkg.id,
+      quantity: 1,
+      participants: Array(pkg.shares).fill('')
+    }]);
+  };
+
+  const handleUpdateQuantity = (index, delta) => {
+    const newCart = [...cart];
+    const item = newCart[index];
+    const pkg = packages.find(p => p.id === item.package_id);
     
+    if (item.quantity + delta > 0) {
+      item.quantity += delta;
+      // Adjust participants array size based on total shares needed (quantity * package shares)
+      const totalShares = item.quantity * pkg.shares;
+      if (item.participants.length < totalShares) {
+        item.participants = [...item.participants, ...Array(totalShares - item.participants.length).fill('')];
+      } else if (item.participants.length > totalShares) {
+        item.participants = item.participants.slice(0, totalShares);
+      }
+      setCart(newCart);
+    }
+  };
+
+  const handleRemoveFromCart = (index) => {
+    const newCart = [...cart];
+    newCart.splice(index, 1);
+    setCart(newCart);
+  };
+
+  const handleParticipantChange = (cartIndex, partIndex, value) => {
+    const newCart = [...cart];
+    newCart[cartIndex].participants[partIndex] = value;
+    setCart(newCart);
+  };
+
+  const handleFetchPayer = async () => {
+    if (!payer.phone && !payer.email) {
+      alert("Sila masukkan No. Telefon atau Emel untuk carian.");
+      return;
+    }
     try {
-      const pkg = packages.find(p => p.id === selectedPkg);
+      setLoading(true);
+      const query = supabase.from('korban_payers').select('*');
+      if (payer.phone) query.eq('phone', `${payer.country_code}${payer.phone}`);
+      else query.eq('email', payer.email);
       
-      // Basic validation
-      if (!formData.full_name || !formData.ic_number || !formData.phone) {
-        throw new Error("Sila isi semua maklumat wajib (Nama, No. K/P, No. Telefon)");
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const d = data[0];
+        setPayer({
+          ...payer,
+          full_name: d.full_name,
+          email: d.email || payer.email,
+          phone: d.phone.replace(payer.country_code, ''),
+          address: d.address,
+          next_of_kin: d.next_of_kin
+        });
+        alert("Maklumat berjaya dijumpai!");
+      } else {
+        alert("Tiada rekod dijumpai.");
       }
-
-      // Check for duplicate registration (Pending or Approved)
-      const { data: existing, error: checkError } = await supabase
-        .from('korban_donors')
-        .select('id')
-        .eq('ic_number', formData.ic_number)
-        .in('status', ['pending', 'approved'])
-        .maybeSingle();
-      
-      if (existing) {
-        throw new Error("No. K/P ini sudah didaftarkan. Sila semak status pendaftaran anda.");
-      }
-      
-      // Get current user if logged in
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { data, error } = await supabase
-        .from('korban_donors')
-        .insert([{
-          full_name: formData.full_name,
-          ic_number: formData.ic_number,
-          phone: formData.phone,
-          email: formData.email,
-          address: formData.address,
-          beneficiary_name: formData.beneficiary_name,
-          notes: formData.notes,
-          package_type: pkg.animal_type,
-          shares: pkg.shares,
-          status: 'pending',
-          user_id: user?.id || null
-        }])
-        .select();
-
-      if (error) {
-        if (error.code === '42501') {
-          throw new Error("Masalah kebenaran pangkalan data (Permission Denied). Sila pastikan anda telah menjalankan SQL script terbaru di Supabase.");
-        }
-        throw error;
-      }
-      
-      alert("Pendaftaran berjaya! Sila tunggu kelulusan daripada pihak admin.");
-      const registeredIC = formData.ic_number;
-      
-      setFormData({
-        full_name: '',
-        ic_number: '',
-        phone: '',
-        email: '',
-        address: '',
-        beneficiary_name: '',
-        notes: ''
-      });
-      setSelectedPkg(null);
-      setView('status');
-      setSearchIC(registeredIC);
-      checkStatus(registeredIC);
     } catch (err) {
-      console.error("Korban Registration Error Detail:", err);
-      alert(`Ralat semasa pendaftaran: ${err.message || "Sila cuba lagi"}`);
+      console.error(err);
+      alert("Ralat semasa carian.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setPayment({ ...payment, receipt_file: e.target.files[0] });
+    }
+  };
+
+  const submitRegistration = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      let receiptUrl = '';
+      if (payment.receipt_file) {
+        const fileExt = payment.receipt_file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `korban/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(filePath, payment.receipt_file);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(filePath);
+          
+        receiptUrl = publicUrlData.publicUrl;
+      }
+      
+      // Get current user id if available
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
+      
+      // Create Booking
+      const { data: booking, error: bookingError } = await supabase.from('korban_bookings').insert([{
+        user_id: userId,
+        total_amount: totalAmount,
+        status: 'pending',
+        payment_status: 'Pending Verification',
+        receipt_url: receiptUrl,
+        reference_number: payment.reference_number
+      }]).select().single();
+      
+      if (bookingError) throw bookingError;
+      
+      // Create Payer
+      const { error: payerError } = await supabase.from('korban_payers').insert([{
+        booking_id: booking.id,
+        full_name: payer.full_name,
+        email: payer.email,
+        phone: `${payer.country_code}${payer.phone}`,
+        address: payer.address,
+        next_of_kin: payer.next_of_kin
+      }]);
+      
+      if (payerError) throw payerError;
+      
+      // Create Participants
+      const participantsData = [];
+      cart.forEach(item => {
+        item.participants.forEach(name => {
+          if (name.trim() !== '') {
+            participantsData.push({
+              booking_id: booking.id,
+              package_id: item.package_id,
+              participant_name: name
+            });
+          }
+        });
+      });
+      
+      if (participantsData.length > 0) {
+        const { error: partsError } = await supabase.from('korban_participants').insert(participantsData);
+        if (partsError) throw partsError;
+      }
+      
+      setStep(4); // Success step
+    } catch (err) {
+      console.error(err);
+      alert(`Ralat semasa penghantaran: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading && step === 1) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 mb-6 shadow-sm ring-8 ring-orange-50 dark:ring-orange-900/10">
-          <Box size={40} />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">
+            Ibadah Korban 1447H
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Laksanakan ibadah korban anda bersama {settings?.mosque_name || 'Masjid Unggun'}. Mudah, selamat dan telus.
+          </p>
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Ibadah Korban 1447H</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Laksanakan ibadah korban anda bersama {settings?.mosque_name || 'Masjid Unggun'}. 
-          Pendaftaran dibuka sehingga 10 Zulhijjah.
-        </p>
 
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mt-10">
-          <button 
-            onClick={() => setView('register')}
-            className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${
-              view === 'register' 
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' 
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <ShieldCheck size={20} />
-            Pendaftaran
-          </button>
-          <button 
-            onClick={() => setView('list')}
-            className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${
-              view === 'list' 
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' 
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Users size={20} />
-            Senarai Peserta
-          </button>
-          <button 
-            onClick={() => setView('status')}
-            className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${
-              view === 'status' 
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' 
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Clock size={20} />
-            Semak Status
-          </button>
-        </div>
-      </div>
-
-      {view === 'register' && (
-        <div className="glass-card rounded-[3rem] p-8 md:p-12 border border-slate-200 dark:border-slate-800 shadow-xl max-w-4xl mx-auto">
-          <form onSubmit={handleSubmit} className="space-y-12">
-            {/* Step 1: Package */}
-            <div>
-              <div className="flex items-center gap-4 mb-6">
-                <span className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-emerald-600/20">1</span>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Pilih Pakej Korban</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {packages.map(pkg => (
-                  <div 
-                    key={pkg.id}
-                    onClick={() => setSelectedPkg(pkg.id)}
-                    className={`group relative border-2 rounded-3xl p-6 transition-all duration-300 ${
-                      selectedPkg === pkg.id
-                        ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-900/10 shadow-xl scale-[1.02]'
-                        : 'border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 cursor-pointer'
-                    }`}
-                  >
-                    {selectedPkg === pkg.id && (
-                      <div className="absolute -top-3 -right-3 w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg">
-                        <Check size={18} />
-                      </div>
-                    )}
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">{pkg.name}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{pkg.description}</p>
-                    <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">RM {pkg.price}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Step 2: Information */}
-            <div>
-              <div className="flex items-center gap-4 mb-6">
-                <span className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-emerald-600/20">2</span>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Maklumat Peserta</h2>
-              </div>
+        {/* Stepper */}
+        {step < 4 && (
+          <div className="max-w-3xl mx-auto mb-12">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 dark:bg-slate-800 -z-10 rounded-full"></div>
+              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-purple-600 -z-10 rounded-full transition-all duration-500`} style={{ width: `${(step - 1) * 50}%` }}></div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <User size={16} /> Nama Penuh (Spt dalam IC)
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.full_name}
-                    onChange={e => setFormData({...formData, full_name: e.target.value})}
-                    placeholder="cth: Ahmad Bin Abu"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <ShieldCheck size={16} /> No. Kad Pengenalan
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.ic_number}
-                    onChange={e => setFormData({...formData, ic_number: e.target.value})}
-                    placeholder="cth: 900101-01-5555"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <Phone size={16} /> No. Telefon
-                  </label>
-                  <input
-                    required
-                    type="tel"
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                    placeholder="012-3456789"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <Mail size={16} /> Emel (Opsional)
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    placeholder="email@contoh.com"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <MapPin size={16} /> Alamat Penuh
-                  </label>
-                  <textarea
-                    required
-                    rows="2"
-                    value={formData.address}
-                    onChange={e => setFormData({...formData, address: e.target.value})}
-                    placeholder="No 123, Jalan Masjid..."
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  ></textarea>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <Users size={16} /> Nama Waris/Beneficiary
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.beneficiary_name}
-                    onChange={e => setFormData({...formData, beneficiary_name: e.target.value})}
-                    placeholder="Nama wakil waris"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <FileText size={16} /> Nota Tambahan
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.notes}
-                    onChange={e => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Sebutkan hajat/pesanan..."
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t-2 border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="text-center md:text-left">
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Jumlah Keseluruhan</p>
-                <h3 className="text-4xl font-black text-slate-900 dark:text-white">
-                  RM {selectedPkg ? packages.find(p => p.id === selectedPkg).price : '0'}
-                </h3>
-              </div>
-              <button
-                disabled={!selectedPkg || loading}
-                type="submit"
-                className="w-full md:w-auto px-12 py-5 rounded-[2rem] bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl shadow-2xl shadow-emerald-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3"
-              >
-                {loading ? (
-                  <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    Daftar Sekarang
-                    <ChevronRight size={24} />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {view === 'list' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {parts.map(part => (
-              <div key={part.id} className="glass-card rounded-[2.5rem] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg">
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Bahagian {part.part_number}</h3>
-                    <p className="text-sm text-slate-500">{part.animal_type}</p>
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="flex flex-col items-center gap-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg transition-colors ${
+                    step === s ? 'bg-purple-600 text-white ring-4 ring-purple-600/20' : 
+                    step > s ? 'bg-purple-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-600 border-2 border-slate-200 dark:border-slate-800'
+                  }`}>
+                    {step > s ? <Check size={24} /> : s}
                   </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{part.current_shares}/{part.max_shares}</span>
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Bahagian Diisi</p>
-                  </div>
-                </div>
-                <div className="p-6 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Senarai Peserta</h4>
-                  {part.assignments && part.assignments.length > 0 ? (
-                    <div className="space-y-2">
-                      {part.assignments.map((asgn, idx) => (
-                        <div key={idx} className="flex items-center gap-3 py-2 px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                          <span className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs font-bold">
-                            {idx + 1}
-                          </span>
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{asgn.donor.full_name}</p>
-                        </div>
-                      ))}
-                      {[...Array(part.max_shares - part.current_shares)].map((_, idx) => (
-                        <div key={`empty-${idx}`} className="flex items-center gap-3 py-2 px-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700">
-                          <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-xs font-bold">
-                            {part.current_shares + idx + 1}
-                          </span>
-                          <p className="text-sm font-medium text-slate-400 italic">Kosong</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-500 italic">Belum ada peserta</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          {parts.length === 0 && (
-            <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-              <Users className="mx-auto h-20 w-20 text-slate-200 dark:text-slate-700 mb-6" />
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Belum Ada Rekod</h3>
-              <p className="text-slate-500">Senarai peserta akan dikemaskini oleh pihak admin dari semasa ke semasa.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {view === 'status' && (
-        <div className="max-w-2xl mx-auto space-y-8">
-          <div className="glass-card rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-lg text-center">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Semak Status Pendaftaran</h2>
-            <div className="flex gap-4">
-              <input
-                type="text"
-                value={searchIC}
-                onChange={e => setSearchIC(e.target.value)}
-                placeholder="Masukkan No. Kad Pengenalan"
-                className="flex-1 px-6 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:border-emerald-500 outline-none transition-all dark:text-white font-bold text-center tracking-widest"
-              />
-              <button 
-                onClick={checkStatus}
-                disabled={loading}
-                className="px-8 py-4 bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg"
-              >
-                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Search size={20} />}
-                Cari
-              </button>
-            </div>
-          </div>
-
-          {statusResult && statusResult.length > 0 ? (
-            <div className="space-y-4">
-              {statusResult.map(res => (
-                <div key={res.id} className="glass-card rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                      res.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 
-                      res.status === 'pending' ? 'bg-orange-100 text-orange-600' : 
-                      'bg-red-100 text-red-600'
-                    }`}>
-                      {res.status === 'approved' ? <ShieldCheck size={28} /> : 
-                       res.status === 'pending' ? <Clock size={28} /> : <AlertCircle size={28} />}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">{res.package_type} - {res.shares} Bahagian</h3>
-                      <p className="text-sm text-slate-500">ID: {res.id.slice(0, 8).toUpperCase()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
-                        res.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 
-                        res.status === 'pending' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 
-                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>
-                        {res.status === 'approved' ? 'Diluluskan' : res.status === 'pending' ? 'Dalam Proses' : 'Ditolak/Batal'}
-                      </span>
-                    </div>
-                  </div>
+                  <span className={`text-sm font-bold ${step >= s ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400'}`}>
+                    {s === 1 ? 'Tempahan' : s === 2 ? 'Maklumat' : 'Pembayaran'}
+                  </span>
                 </div>
               ))}
             </div>
-          ) : statusResult && (
-            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800">
-              <p className="text-slate-500">Tiada rekod dijumpai untuk No. IC ini.</p>
+          </div>
+        )}
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main Content Area */}
+          <div className="flex-1">
+            {step === 1 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                  <Box className="text-purple-600" /> Pilihan Pakej Korban
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {packages.map(pkg => (
+                    <div key={pkg.id} className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-purple-300 dark:hover:border-purple-800 transition-all group">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{pkg.name}</h3>
+                          <p className="text-sm text-slate-500">{pkg.description}</p>
+                        </div>
+                        <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
+                          {pkg.animal_type}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-6">
+                        <p className="text-3xl font-black text-slate-900 dark:text-white">RM {pkg.price}</p>
+                        <button 
+                          onClick={() => handleAddToCart(pkg)}
+                          className="px-6 py-3 bg-slate-900 dark:bg-purple-600 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-purple-700 transition-colors shadow-lg shadow-slate-900/20 dark:shadow-purple-600/20"
+                        >
+                          Pilih
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {cart.length > 0 && (
+                  <div className="mt-12 bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-lg">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Maklumat Peserta (Nama yang diniatkan)</h2>
+                    
+                    <div className="space-y-8">
+                      {cart.map((item, cartIndex) => {
+                        const pkg = packages.find(p => p.id === item.package_id);
+                        return (
+                          <div key={cartIndex} className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <div className="flex justify-between items-center mb-6">
+                              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{pkg.name} x {item.quantity}</h3>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <button onClick={() => handleUpdateQuantity(cartIndex, -1)} className="px-3 py-1 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold">-</button>
+                                  <span className="px-3 font-bold text-slate-900 dark:text-white">{item.quantity}</span>
+                                  <button onClick={() => handleUpdateQuantity(cartIndex, 1)} className="px-3 py-1 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold">+</button>
+                                </div>
+                                <button onClick={() => handleRemoveFromCart(cartIndex)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                  <Trash2 size={20} />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {item.participants.map((name, pIdx) => (
+                                <div key={pIdx} className="space-y-1">
+                                  <label className="text-xs font-bold text-slate-500">Peserta {pIdx + 1}</label>
+                                  <input 
+                                    type="text" 
+                                    value={name}
+                                    onChange={(e) => handleParticipantChange(cartIndex, pIdx, e.target.value)}
+                                    placeholder="Nama penuh peserta" 
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-lg">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <User className="text-purple-600" /> Maklumat Pembayar
+                  </h2>
+                  <button onClick={handleFetchPayer} className="flex items-center gap-2 text-sm font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 rounded-lg hover:bg-purple-100 transition-colors">
+                    <Search size={16} /> Cari Rekod Lama
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nama Penuh</label>
+                    <input 
+                      type="text" 
+                      value={payer.full_name}
+                      onChange={e => setPayer({...payer, full_name: e.target.value})}
+                      className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Emel</label>
+                    <input 
+                      type="email" 
+                      value={payer.email}
+                      onChange={e => setPayer({...payer, email: e.target.value})}
+                      className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">No. Telefon (WhatsApp)</label>
+                    <div className="flex">
+                      <select 
+                        value={payer.country_code}
+                        onChange={e => setPayer({...payer, country_code: e.target.value})}
+                        className="px-4 py-3 rounded-l-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-bold dark:text-white outline-none border-r-0"
+                      >
+                        <option value="+60">+60</option>
+                        <option value="+65">+65</option>
+                        <option value="+62">+62</option>
+                        <option value="+673">+673</option>
+                      </select>
+                      <input 
+                        type="tel" 
+                        value={payer.phone}
+                        onChange={e => setPayer({...payer, phone: e.target.value})}
+                        placeholder="123456789"
+                        className="w-full px-5 py-3 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nama Waris / Kenalan</label>
+                    <input 
+                      type="text" 
+                      value={payer.next_of_kin}
+                      onChange={e => setPayer({...payer, next_of_kin: e.target.value})}
+                      className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Alamat Penuh</label>
+                    <textarea 
+                      rows="3"
+                      value={payer.address}
+                      onChange={e => setPayer({...payer, address: e.target.value})}
+                      className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-8">
+                {/* Payment Instructions */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-lg">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+                    <CreditCard className="text-purple-600" /> Arahan Pembayaran
+                  </h2>
+                  <div className="p-6 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-800/30 mb-8">
+                    <p className="text-slate-700 dark:text-slate-300 mb-4">
+                      Sila buat pembayaran berjumlah <span className="font-black text-xl text-purple-600 dark:text-purple-400">RM {totalAmount.toFixed(2)}</span> ke akaun berikut:
+                    </p>
+                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                      <div className="flex-1 space-y-4">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <p className="text-sm text-slate-500">Bank</p>
+                          <p className="font-bold text-lg text-slate-900 dark:text-white">{settings?.bank_name || 'Bank Islam'}</p>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <p className="text-sm text-slate-500">Nama Akaun</p>
+                          <p className="font-bold text-lg text-slate-900 dark:text-white">{settings?.account_name || 'Masjid Unggun'}</p>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-slate-500">No Akaun</p>
+                            <p className="font-black text-xl text-slate-900 dark:text-white font-mono tracking-wider">{settings?.account_number || '1234567890'}</p>
+                          </div>
+                          <button onClick={() => navigator.clipboard.writeText(settings?.account_number || '1234567890')} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600">Salin</button>
+                        </div>
+                      </div>
+                      {settings?.qr_code_url && (
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+                          <img src={settings.qr_code_url} alt="DuitNow QR" className="w-48 h-48 object-cover rounded-xl mb-2 mx-auto" />
+                          <p className="font-bold text-sm text-slate-600 dark:text-slate-400">Imbas untuk bayar (DuitNow)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Upload Receipt */}
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Muat Naik Resit Pembayaran</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">No. Rujukan (Reference No)</label>
+                        <input 
+                          type="text" 
+                          value={payment.reference_number}
+                          onChange={e => setPayment({...payment, reference_number: e.target.value})}
+                          placeholder="Contoh: REF123456"
+                          className="w-full px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 ring-purple-500/20 focus:border-purple-500 outline-none transition-all dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Gambar Resit (PDF/Image)</label>
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            accept="image/*,.pdf"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <div className={`w-full px-5 py-3 rounded-xl border-2 border-dashed ${payment.receipt_file ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950'} flex items-center justify-center gap-2 transition-all`}>
+                            <Upload size={20} className={payment.receipt_file ? 'text-purple-600' : 'text-slate-400'} />
+                            <span className={`font-medium ${payment.receipt_file ? 'text-purple-600 dark:text-purple-400' : 'text-slate-500'}`}>
+                              {payment.receipt_file ? payment.receipt_file.name : 'Pilih fail resit...'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Akad & T&C */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-lg space-y-6">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShieldCheck className="text-purple-600" /> Akad Wakalah & Syarat
+                  </h3>
+                  
+                  <label className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <input type="checkbox" className="w-5 h-5 mt-1 accent-purple-600" checked={payment.agree_akad} onChange={e => setPayment({...payment, agree_akad: e.target.checked})} />
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white mb-1">Lafaz Akad Wakalah Korban</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">"Saya mewakilkan urusan ibadah korban saya dan penama-penama yang lain pada tahun ini kepada wakil pengurusan Masjid Unggun kerana Allah Ta'ala."</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <input type="checkbox" className="w-5 h-5 mt-1 accent-purple-600" checked={payment.agree_tnc} onChange={e => setPayment({...payment, agree_tnc: e.target.checked})} />
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white mb-1">Terma & Syarat</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Saya mengesahkan bahawa semua maklumat yang diberikan adalah benar. Pihak penganjur berhak menolak pendaftaran jika bayaran tidak disahkan.</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-12 border border-slate-200 dark:border-slate-800 shadow-2xl text-center max-w-2xl mx-auto">
+                <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-green-100 dark:shadow-none ring-8 ring-green-50 dark:ring-green-900/10">
+                  <Check size={48} strokeWidth={3} />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Alhamdulillah, Tempahan Berjaya!</h2>
+                <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+                  Pendaftaran korban anda telah direkodkan. Sila tunggu pengesahan daripada pihak admin dalam masa 24 jam.
+                </p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="px-8 py-4 bg-slate-900 dark:bg-purple-600 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 dark:shadow-purple-600/20 hover:scale-105 transition-all"
+                >
+                  Kembali ke Laman Utama
+                </button>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            {step < 4 && (
+              <div className="mt-8 flex justify-between items-center">
+                {step > 1 ? (
+                  <button 
+                    onClick={() => setStep(step - 1)}
+                    className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800 flex items-center gap-2 transition-all"
+                  >
+                    <ChevronLeft size={20} /> Kembali
+                  </button>
+                ) : <div></div>}
+                
+                {step < 3 ? (
+                  <button 
+                    onClick={() => {
+                      if (step === 1 && cart.length === 0) {
+                        alert("Sila pilih sekurang-kurangnya satu pakej korban.");
+                        return;
+                      }
+                      if (step === 2 && (!payer.full_name || !payer.phone || !payer.address || !payer.next_of_kin)) {
+                        alert("Sila isi semua maklumat pembayar yang wajib.");
+                        return;
+                      }
+                      setStep(step + 1);
+                    }}
+                    className="px-8 py-4 rounded-2xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all"
+                  >
+                    Seterusnya <ChevronRight size={20} />
+                  </button>
+                ) : (
+                  <button 
+                    disabled={!payment.agree_akad || !payment.agree_tnc || !payment.receipt_file || isSubmitting}
+                    onClick={submitRegistration}
+                    className="px-10 py-4 rounded-2xl font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-600/30 flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? 'Memproses...' : 'Sahkan Tempahan & Hantar'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sticky Sidebar / Order Summary */}
+          {step < 4 && (
+            <div className="lg:w-[380px] w-full">
+              <div className="sticky top-24 bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-xl">
+                <h3 className="font-black text-xl text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                  <FileText className="text-purple-600" /> Ringkasan Tempahan
+                </h3>
+                
+                {cart.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Box className="mx-auto text-slate-300 dark:text-slate-600 mb-3" size={48} />
+                    <p className="text-slate-500 font-medium">Tiada pakej dipilih lagi.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 mb-6">
+                    {cart.map((item, idx) => {
+                      const pkg = packages.find(p => p.id === item.package_id);
+                      return (
+                        <div key={idx} className="flex justify-between items-start text-sm">
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{pkg.name}</p>
+                            <p className="text-slate-500">x {item.quantity}</p>
+                          </div>
+                          <p className="font-bold text-slate-900 dark:text-white">RM {(pkg.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                
+                <div className="border-t-2 border-slate-100 dark:border-slate-800 pt-4 mt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-slate-500 font-medium">Jumlah Peserta</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{cart.reduce((a, b) => a + b.participants.length, 0)} Orang</span>
+                  </div>
+                  <div className="flex justify-between items-center text-lg mt-4">
+                    <span className="font-black text-slate-900 dark:text-white">Jumlah</span>
+                    <span className="font-black text-2xl text-purple-600 dark:text-purple-400">RM {totalAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-8 bg-purple-50 dark:bg-purple-900/10 rounded-xl p-4 flex gap-3 text-sm text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/30">
+                  <ShieldCheck size={20} className="shrink-0 text-purple-600" />
+                  <p>Transaksi anda adalah selamat dan maklumat dirahsiakan sepenuhnya.</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      )}
+
+      </div>
     </div>
   );
 }
-

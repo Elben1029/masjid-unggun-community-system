@@ -12,7 +12,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const { currentUser, userRole, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,138 +41,151 @@ export default function Navbar() {
   }
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-md py-2' : 'bg-transparent py-4'}`}>
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-slate-950 shadow-2xl py-4 border-b border-white/5`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* TOP TIER: Branding & Admin Access */}
-        <div className="flex justify-between items-center mb-2">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-emerald-500/30 transition-all duration-300 overflow-hidden">
+        <div className="flex items-center justify-between gap-8">
+          
+          {/* 1. BRANDING (Logo + Title) */}
+          <Link to="/" className="flex items-center gap-4 group shrink-0">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 overflow-hidden ${
+              scrolled ? 'bg-emerald-600 scale-90' : 'bg-slate-900 scale-100'
+            }`}>
               {settings?.mosque_logo_url ? (
                 <img src={settings.mosque_logo_url} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-white font-bold text-xl">M</span>
+                <span className="text-white font-black text-2xl">M</span>
               )}
             </div>
-            <span className={`font-bold text-xl tracking-tight transition-colors duration-300 ${scrolled ? 'text-slate-900 dark:text-white' : 'text-slate-900 dark:text-white'}`}>
-              {settings?.mosque_name || 'Masjid Unggun'}
-            </span>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-lg sm:text-xl leading-none tracking-tight text-white">
+                {settings?.mosque_name || 'Masjid Unggun'}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1 text-emerald-400">
+                JawatanKuasa Masjid
+              </span>
+            </div>
           </Link>
 
-          <div className="flex items-center gap-4">
-            {/* Admin Profile/Login Icon */}
-            {currentUser ? (
-              <div className="relative">
+          {/* 2. NAVIGATION (Hidden on mobile) */}
+          <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-2">
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 relative group ${
+                    isActive 
+                      ? 'text-emerald-400 bg-emerald-950/50 ring-1 ring-emerald-500/30' 
+                      : 'text-white/80 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {link.name}
+                  {isActive && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* 3. ACTIONS (Admin + Mobile Toggle) */}
+          <div className="flex items-center gap-3">
+            {/* Admin Portal */}
+            <div className="relative">
+              {currentUser ? (
                 <button 
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-all shadow-sm"
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
-                  <User size={20} />
+                  <User size={18} />
                 </button>
-                
-                {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-fadeIn">
-                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                      <p className="text-xs font-semibold text-slate-400">Admin</p>
-                      <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-                        {currentUser.email}
-                      </p>
-                    </div>
-                    
-                    <Link 
-                      to="/admin" 
-                      onClick={() => setIsProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
-                    >
-                      <ShieldAlert size={16} />
-                      <span>Admin Dashboard</span>
-                    </Link>
-                    
-                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
-                    
-                    <button 
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        handleLogout();
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors text-left"
-                    >
-                      <LogOut size={16} />
-                      <span>Log Keluar</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link to="/login" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 transition-all shadow-sm">
-                <User size={20} />
-              </Link>
-            )}
+              ) : (
+                <Link 
+                  to="/login"
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <User size={18} />
+                </Link>
+              )}
 
-            {/* Mobile Toggle */}
+              {/* Dropdown */}
+              {isProfileDropdownOpen && currentUser && (
+                <div className="absolute right-0 mt-3 w-64 rounded-[2rem] bg-white dark:bg-slate-900 shadow-2xl border border-slate-200/50 dark:border-slate-800/50 py-3 z-[60] animate-in slide-in-from-top-4 duration-300">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 mb-2">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Akses Pentadbir</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white truncate">{currentUser.email}</p>
+                  </div>
+                  <Link 
+                    to="/admin" 
+                    onClick={() => setIsProfileDropdownOpen(false)}
+                    className="flex items-center gap-3 px-6 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 transition-colors"
+                  >
+                    <ShieldAlert size={18} /> Admin Dashboard
+                  </Link>
+                  <button 
+                    onClick={() => { setIsProfileDropdownOpen(false); handleLogout(); }}
+                    className="w-full flex items-center gap-3 px-6 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors text-left"
+                  >
+                    <LogOut size={18} /> Log Keluar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 text-slate-900 dark:text-white"
               onClick={() => setIsOpen(!isOpen)}
+              className="lg:hidden w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border border-white/10 bg-white/5 text-white"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
-
-        {/* BOTTOM TIER: Navigation Bar */}
-        <nav className="hidden md:flex items-center justify-center gap-8 py-2 border-t border-slate-100 dark:border-slate-800/50">
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={`text-sm font-bold transition-all duration-300 relative py-1 group ${
-                  isActive 
-                    ? 'text-emerald-600 dark:text-emerald-400' 
-                    : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
-                }`}
-              >
-                {link.name}
-                <span className={`absolute bottom-0 left-0 h-0.5 bg-emerald-500 transition-all duration-300 ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-              </Link>
-            );
-          })}
-        </nav>
       </div>
 
-      {/* Mobile Nav */}
-      <div className={`md:hidden absolute top-full left-0 right-0 bg-white dark:bg-slate-900 shadow-lg border-t border-slate-100 dark:border-slate-800 transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-[85vh] overflow-y-auto py-4' : 'max-h-0 py-0'}`}>
-        <div className="flex flex-col px-4 space-y-3">
+      {/* MOBILE NAVIGATION */}
+      <div className={`lg:hidden fixed inset-0 top-[88px] z-40 bg-white dark:bg-slate-950 transition-all duration-500 ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}>
+        <div className="p-6 space-y-2 overflow-y-auto max-h-full">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               to={link.path}
-              className="block px-3 py-2 rounded-lg text-base font-bold text-slate-900 dark:text-slate-100 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-300"
               onClick={() => setIsOpen(false)}
+              className={`block px-6 py-5 rounded-3xl text-lg font-bold transition-all ${
+                location.pathname === link.path
+                  ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/30'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900'
+              }`}
             >
               {link.name}
             </Link>
           ))}
           
-          <div className="h-px w-full bg-slate-200 dark:bg-slate-800 my-2"></div>
-
-          {currentUser ? (
-            <Link
-              to="/admin"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-lg text-base font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-            >
-              Dashboard Admin
-            </Link>
-          ) : (
-            <Link
-              to="/login"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-lg text-base font-bold text-slate-600 dark:text-slate-400"
-            >
-              Log Masuk Pentadbir
-            </Link>
-          )}
+          <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800 space-y-4">
+            <p className="px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Akses Sistem</p>
+            {currentUser ? (
+              <Link
+                to="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-6 py-5 rounded-3xl bg-slate-900 text-white font-bold"
+              >
+                <ShieldAlert size={20} /> Dashboard Pentadbir
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-6 py-5 rounded-3xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold"
+              >
+                <User size={20} /> Log Masuk Pentadbir
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </header>
